@@ -1,0 +1,572 @@
+/**
+ * Print CSS for Documentation PDFs
+ *
+ * This stylesheet controls the visual appearance of generated PDF documentation.
+ * Use the --custom-css flag to inject additional CSS rules that extend or override
+ * these defaults.
+ *
+ * CSS Classes and Selectors Available for Custom Styling:
+ *
+ * Document Structure:
+ *   h1 - Main document title (e.g., file name)
+ *   h2 - Section headings (e.g., "Station Options", "Variables")
+ *   h3 - Subsection headings (e.g., "Execution", "General")
+ *   h4 - Sub-subsection headings (e.g., MainSequence)
+ *
+ * Document Header:
+ *   .doc-header - Metadata block (author/company) at top of page
+ *   .doc-header .meta-item - Individual metadata lines
+ *
+ * Tables:
+ *   table - All data tables (step tables, variable tables, station options)
+ *   th - Table header cells (gray background, white text)
+ *   td - Table data cells
+ *   tr:nth-child(even) - Alternating row background
+ *
+ * Code Elements:
+ *   code - Inline code expressions (red text on gray background)
+ *   pre - Code blocks (dark background, light text)
+ *   pre code - Code within pre blocks
+ *
+ * Mermaid Diagrams:
+ *   .mermaid-diagram - Container for Mermaid flowcharts
+ *   .mermaid-diagram svg - SVG elements within diagrams
+ *
+ * Extended Syntax (MkDocs Material):
+ *   .admonition - Generic admonition container
+ *   .admonition.note - Blue note boxes
+ *   .admonition.tip - Green tip boxes
+ *   .admonition.warning - Orange warning boxes
+ *   .admonition.danger - Red danger boxes
+ *
+ * Block Elements:
+ *   blockquote - Quoted text (left border, gray background)
+ *   hr - Horizontal rules (section dividers)
+ *
+ * Typography:
+ *   strong - Bold text (dark blue)
+ *   em - Italic text (gray)
+ *   a - Links (blue)
+ *
+ * Header Metadata:
+ *   h1 + p:has(strong:first-child) - Author line (right-aligned)
+ *   h1 + p + p:has(strong:first-child) - Company line (right-aligned)
+ *
+ * Example Custom CSS (--custom-css flag):
+ *   table { font-size: 8pt; }
+ *   th { background-color: #0067C0; }
+ *   .mermaid-diagram { border: 1px solid #ccc; }
+ *   .admonition { font-size: 9pt; }
+ */
+
+/* ------------------------------------------------------------------ *
+ * Design tokens
+ * ------------------------------------------------------------------ */
+:root {
+  /* Brand palette - deep, calm navy/teal with a single bright accent */
+  --color-ink: #1b2733;
+  --color-body: #2d3a48;
+  --color-muted: #5b6b7b;
+  --color-faint: #8595a5;
+
+  --color-brand: #14507a;
+  --color-brand-deep: #0d3a5c;
+  --color-accent: #2b88d8;
+  --color-accent-soft: #d8ecfb;
+
+  --color-rule: #e3e9ef;
+  --color-rule-strong: #cdd7e1;
+
+  --color-surface: #ffffff;
+  --color-surface-alt: #f6f9fc;
+  --color-surface-sunken: #eef3f8;
+
+  --color-code: #b3306b;
+  --color-code-bg: #f3f0f5;
+
+  /* Typography */
+  --font-sans: "Segoe UI", "Inter", "Helvetica Neue", "Arial", sans-serif;
+  --font-mono: "Cascadia Code", "Cascadia Mono", "Fira Code", "Consolas",
+    "SFMono-Regular", monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Page layout: A4 landscape with comfortable margins
+ * ------------------------------------------------------------------ */
+@page {
+  size: a4 landscape;
+  margin: 1.4cm 1.6cm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 9pt;
+  color: var(--color-body);
+  line-height: 1.55;
+  max-width: 100%;
+  margin: 0;
+  letter-spacing: 0.05px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ------------------------------------------------------------------ *
+ * Headings
+ * ------------------------------------------------------------------ */
+h1 {
+  font-size: 23pt;
+  font-weight: 700;
+  color: var(--color-brand-deep);
+  letter-spacing: -0.3px;
+  text-align: center;
+  margin: 0 0 4px;
+  padding-bottom: 0;
+  position: relative;
+}
+
+/* Path subtitle — left-aligned under title */
+h1 + p {
+  text-align: left;
+  font-size: 8pt;
+  color: var(--color-muted);
+  margin-bottom: 16px;
+}
+
+h2 {
+  font-size: 15pt;
+  font-weight: 700;
+  color: var(--color-brand);
+  letter-spacing: -0.2px;
+  margin-top: 26px;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--color-rule);
+}
+
+/* A subtle accent tick to the left of every section heading */
+h2::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 0.95em;
+  margin-right: 9px;
+  vertical-align: -0.12em;
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+
+h3 {
+  font-size: 11.5pt;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-top: 18px;
+  margin-bottom: 7px;
+}
+
+h4 {
+  font-size: 10pt;
+  font-weight: 700;
+  color: var(--color-muted);
+  letter-spacing: 0.4px;
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Paragraphs & inline text
+ * ------------------------------------------------------------------ */
+p {
+  margin: 6px 0 10px;
+}
+
+strong {
+  color: var(--color-brand-deep);
+  font-weight: 700;
+}
+
+em {
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+a:hover {
+  border-bottom-color: var(--color-accent);
+}
+
+/* ------------------------------------------------------------------ *
+ * Tables
+ * ------------------------------------------------------------------ */
+table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 10px 0 18px;
+  font-size: 7.8pt;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(27, 39, 51, 0.04);
+}
+
+th,
+td {
+  padding: 7px 10px;
+  text-align: left;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* Vertical separators between columns, but not on the last column */
+th:not(:last-child),
+td:not(:last-child) {
+  border-right: 1px solid var(--color-rule);
+}
+
+thead th,
+th {
+  background: linear-gradient(
+    180deg,
+    var(--color-brand) 0%,
+    var(--color-brand-deep) 100%
+  );
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 7.8pt;
+  letter-spacing: 0.3px;
+  border-bottom: none;
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tr:nth-child(even) td {
+  background-color: var(--color-surface-alt);
+}
+
+tr:hover td {
+  background-color: var(--color-accent-soft);
+}
+
+/* ------------------------------------------------------------------ *
+ * Code
+ * ------------------------------------------------------------------ */
+code {
+  background-color: var(--color-code-bg);
+  color: var(--color-code);
+  padding: 1.5px 5px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 7.8pt;
+  border: 1px solid rgba(179, 48, 107, 0.12);
+}
+
+/* ------------------------------------------------------------------ *
+ * Adapter technology colors
+ * ------------------------------------------------------------------ */
+.adapter {
+  padding: 1.5px 5px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 7.8pt;
+  font-weight: 600;
+}
+
+.adapter-labview {
+  background-color: #fef3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.adapter-dotnet {
+  background-color: #e8daef;
+  color: #6c3483;
+  border: 1px solid #af7ac5;
+}
+
+.adapter-activex {
+  background-color: #fadbd8;
+  color: #922b21;
+  border: 1px solid #ec7063;
+}
+
+.adapter-python {
+  background-color: #d4efdf;
+  color: #1e8449;
+  border: 1px solid #58d68d;
+}
+
+.adapter-native {
+  background-color: #d6eaf8;
+  color: #1a5276;
+  border: 1px solid #5dade2;
+}
+
+.adapter-standalone {
+  background-color: #eaf2f8;
+  color: #2e4053;
+  border: 1px solid #aab7b8;
+}
+
+.adapter-sequence {
+  background-color: #d5f5e3;
+  color: #1a5276;
+  border: 1px solid #58d68d;
+}
+
+pre {
+  background-color: #0f1b29;
+  color: #e6edf5;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: 7.8pt;
+  line-height: 1.55;
+  border: 1px solid #1c2c3d;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+pre code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+}
+
+/* ------------------------------------------------------------------ *
+ * Blockquotes
+ * ------------------------------------------------------------------ */
+blockquote {
+  color: var(--color-muted);
+  margin: 10px 0;
+  padding: 10px 16px;
+  border-left: 3px solid var(--color-accent);
+  background-color: var(--color-surface-alt);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+}
+
+blockquote p {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * Lists
+ * ------------------------------------------------------------------ */
+ul,
+ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+
+li {
+  margin-bottom: 4px;
+  padding-left: 2px;
+}
+
+li::marker {
+  color: var(--color-accent);
+}
+
+/* ------------------------------------------------------------------ *
+ * Rules & page breaks
+ * ------------------------------------------------------------------ */
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-rule-strong) 20%,
+    var(--color-rule-strong) 80%,
+    transparent
+  );
+  margin: 26px 0;
+}
+
+tr,
+pre,
+blockquote,
+.admonition,
+.mermaid-diagram {
+  break-inside: avoid;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  break-after: avoid;
+}
+
+/* ------------------------------------------------------------------ *
+ * Mermaid diagrams
+ * ------------------------------------------------------------------ */
+.mermaid-diagram {
+  text-align: center;
+  margin: 18px 0;
+  padding: 16px;
+  background-color: var(--color-surface-alt);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-lg);
+}
+
+.mermaid-diagram svg {
+  max-width: 92% !important;
+  max-height: 8cm !important;
+  display: block;
+  margin: 0 auto;
+}
+
+.mermaid-diagram svg foreignObject,
+.mermaid-diagram svg foreignobject {
+  overflow: visible !important;
+}
+
+.mermaid-diagram svg text,
+.mermaid-diagram svg .nodeLabel {
+  font-family: var(--font-sans) !important;
+  font-size: 8.5pt !important;
+}
+
+/* ------------------------------------------------------------------ *
+ * Document header (author / company metadata)
+ * ------------------------------------------------------------------ */
+.doc-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 9px 14px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid var(--color-accent);
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-alt),
+    var(--color-surface)
+  );
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.doc-header .meta-item {
+  font-size: 9pt;
+  color: var(--color-muted);
+}
+
+.doc-header .meta-item strong {
+  color: var(--color-brand-deep);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ *
+ * Admonitions
+ * ------------------------------------------------------------------ */
+.admonition {
+  margin: 14px 0;
+  padding: 13px 18px 13px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-rule);
+  border-left: 4px solid;
+  background-color: var(--color-surface-alt);
+  font-size: 8.5pt;
+  line-height: 1.6;
+  box-shadow: 0 1px 2px rgba(27, 39, 51, 0.04);
+}
+
+.admonition-title {
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  font-size: 9pt;
+  letter-spacing: 0.2px;
+}
+
+.admonition.note {
+  background-color: #eef6fd;
+  border-color: #cfe5f8;
+  border-left-color: var(--color-accent);
+}
+.admonition.note .admonition-title {
+  color: #1f6aa8;
+}
+
+.admonition.tip {
+  background-color: #edfaf1;
+  border-color: #cdeed6;
+  border-left-color: #2f9e58;
+}
+.admonition.tip .admonition-title {
+  color: #1f7a43;
+}
+
+.admonition.warning {
+  background-color: #fff7ed;
+  border-color: #f7e0bf;
+  border-left-color: #e08a1e;
+}
+.admonition.warning .admonition-title {
+  color: #b56a14;
+}
+
+.admonition.danger {
+  background-color: #fdeeee;
+  border-color: #f6cccc;
+  border-left-color: #d83a3a;
+}
+.admonition.danger .admonition-title {
+  color: #b32626;
+}
+
+/* ------------------------------------------------------------------ *
+ * Print fidelity overrides
+ * ------------------------------------------------------------------ */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  th {
+    background: var(--color-brand-deep) !important;
+    color: #ffffff !important;
+  }
+
+  tr:nth-child(even) td {
+    background-color: var(--color-surface-alt) !important;
+  }
+
+  tr:hover td {
+    background-color: inherit !important;
+  }
+
+  pre {
+    background-color: #0f1b29 !important;
+    color: #e6edf5 !important;
+  }
+
+  .mermaid-diagram,
+  blockquote,
+  .admonition,
+  .doc-header {
+    background-color: var(--color-surface-alt) !important;
+  }
+}

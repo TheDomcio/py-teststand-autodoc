@@ -1,0 +1,17 @@
+# mkdocs.yml - For compatibility testing only
+site_name: Compatibility check
+site_description: This documentation configuration exists only to run unit tests and verify that markdown output renders correctly with MkDocs [for Material] / Zensical and mermaid.js It is not intended for public use.
+theme:
+  name: material
+docs_dir: tmp/output_markdowns
+site_dir: tmp/mkdocs_site
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

@@ -1,0 +1,188 @@
+[project]
+name = "py-teststand-autodoc"
+version = "0.1.0"
+description = "Automated documentation generator for National Instruments TestStand™ sequence files"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "teststand",
+    "national-instruments",
+    "ni",
+    "com",
+    "automation",
+    "test-automation",
+    "documentation",
+    "automation",
+    "automatic-documentation",
+    "autodoc",
+    "markdown",
+    "pywin32",
+    "windows",
+    "python",
+]
+authors = [{ name = "Dominik Rajchel" }]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Manufacturing",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Documentation",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Typing :: Typed",
+]
+dependencies = [
+    "mermaid-py>=0.8.4",
+    "py-teststand>=0.2.3",
+    "pydantic>=2.13.4",
+    "pyrefly>=1.1.0",
+]
+
+[project.optional-dependencies]
+# Markdown -> HTML -> PDF rendering through headless Microsoft Edge.
+# channel="msedge" drives the Edge that ships with Windows, so no browser
+# download is needed.
+pdf = ["markdown>=3.5", "playwright>=1.40"]
+
+[project.urls]
+Homepage = "https://github.com/TheDomcio/py-teststand-autodoc"
+Repository = "https://github.com/TheDomcio/py-teststand-autodoc"
+Issues = "https://github.com/TheDomcio/py-teststand-autodoc/issues"
+"Bug Reports" = "https://github.com/TheDomcio/py-teststand-autodoc/issues"
+"Source Code" = "https://github.com/TheDomcio/py-teststand-autodoc"
+
+[project.scripts]
+py-teststand-autodoc = "py_teststand_autodoc.cli.doc:main"
+py-teststand-autodoc-pdf = "py_teststand_autodoc.cli.pdf:main"
+py-teststand-autodoc-station = "py_teststand_autodoc.cli.station:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/py_teststand_autodoc"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+fix = true
+show-fixes = true
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "N",
+    "W",
+    "B",
+    "C4",
+    "UP",
+    "ARG",
+    "PTH",
+    "RUF",
+    "FA",
+    "TID",
+]
+ignore = ["TID252"]
+per-file-ignores = { "src/**" = ["N801"], "tests/**" = ["N801"] }
+unfixable = []
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["py_teststand_autodoc"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"py_teststand.adapters".msg = "Import from top-level py_teststand instead."
+"py_teststand.analyzer".msg = "Import from top-level py_teststand instead."
+"py_teststand.core".msg = "Import from top-level py_teststand instead."
+"py_teststand.execution".msg = "Import from top-level py_teststand instead."
+"py_teststand.messaging".msg = "Import from top-level py_teststand instead."
+"py_teststand.property".msg = "Import from top-level py_teststand instead."
+"py_teststand.sequence".msg = "Import from top-level py_teststand instead."
+"py_teststand.station".msg = "Import from top-level py_teststand instead."
+"py_teststand.ui".msg = "Import from top-level py_teststand instead."
+"py_teststand.undo".msg = "Import from top-level py_teststand instead."
+"py_teststand.users".msg = "Import from top-level py_teststand instead."
+"py_teststand.workspace".msg = "Import from top-level py_teststand instead."
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+timeout = 30
+timeout_method = "thread"
+markers = [
+    "integration: marks tests as integration tests (slow, requires TestStand™ installation)",
+    "unit: marks tests as unit tests (fast, no TestStand™ required)",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.3.0",
+    "ruff>=0.1.0",
+    "ty>=0.0.34",
+    "types-pywin32",
+]
+tests = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.6", "zensical>=0.0.45"]
+
+[tool.ty]
+rules = { "possibly-missing-attribute" = "ignore" }
+
+[tool.ty.terminal]
+error-on-warning = false
+
+[tool.coverage.run]
+branch = true
+source = ["src/py_teststand_autodoc"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[tool.uv.sources]
+
+[tool.pyrefly]
+project-includes = ["**/*.py*", "**/*.ipynb"]
+spell-check = true
+ignore-unknown-words = true
