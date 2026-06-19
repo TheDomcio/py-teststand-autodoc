@@ -218,6 +218,7 @@ The generated Markdown output is strictly tested and validated for full compatib
 - **[Material for MkDocs](https://squidfunk.github.io/mkdocs-material/)**
 - **[Zensical](https://zensical.org/)**
 
+> Additional Markdown validation using [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2)
 ---
 
 ## 🧰 Technical stack
