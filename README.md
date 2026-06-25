@@ -61,7 +61,7 @@ This means you need a valid TestStand™ installation and a proper [TestStand™
 
 **100% Offline Rendering**: To address privacy concerns and support offline environments, all PDF and Markdown generation is performed strictly locally.
 
-- **Diagrams**: Mermaid.js diagrams are rendered entirely client-side using a bundled `mermaid.min.js` (stored in the package assets) driving a local headless browser session via Playwright.
+- **Diagrams**: Mermaid.js diagrams are rendered entirely client-side using a bundled [`mermaid.min.js`](https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.min.js_ (stored in the package assets) driving a local headless browser session via Playwright.
 - **Fonts**: The PDF styling uses bundled [`UbuntuNerdFont-Regular`](https://www.nerdfonts.com/) and standard pre-installed Windows system fonts (such as `Segoe UI` for text and `Cascadia Code` / `Consolas` for code elements).
 
 ## 🚧 Project Status
