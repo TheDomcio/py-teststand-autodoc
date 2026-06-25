@@ -189,6 +189,10 @@ def get_module_info(step: Any) -> dict[str, Any] | None:
                 params_path = "Parameters"
             elif module_property_object.exists("Call.Parms"):
                 params_path = "Call.Parms"
+            elif module_property_object.exists("DotNetCall.Parms"):
+                params_path = "DotNetCall.Parms"
+            elif module_property_object.exists("Parms"):
+                params_path = "Parms"
 
             if params_path:
                 params_property_object = module_property_object.get_property_object(params_path, 0)

@@ -29,7 +29,7 @@ class TestDataIntegrity:
             assert step_name in md
 
     def test_limit_formatting_consistency(self, engine, seq_file):
-        ext = Extractor(engine)
+        ext = Extractor(engine, include_station_options=False)
         ext.analyze_hierarchy(str(seq_file))
         md = ext.to_markdown()
 
@@ -59,7 +59,7 @@ class TestDataIntegrity:
         assert "N/A" not in md
 
     def test_mermaid_diagram_integrity(self, engine, seq_file):
-        ext = Extractor(engine, extended_syntax=True)
+        ext = Extractor(engine, include_flowcharts=True)
         ext.analyze_hierarchy(str(seq_file))
         md = ext.to_markdown()
 

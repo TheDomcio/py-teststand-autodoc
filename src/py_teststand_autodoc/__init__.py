@@ -7,10 +7,10 @@ from .api import (
     VALID_PROFILES,
     VALID_SCOPES,
     Extractor,
-    Formatter,
-    HierarchyExtractor,
     generate_documentation,
 )
+from .extraction.extractor import HierarchyExtractor
+from .rendering.formatter import Formatter
 
 __all__ = [
     "VALID_BROWSERS",

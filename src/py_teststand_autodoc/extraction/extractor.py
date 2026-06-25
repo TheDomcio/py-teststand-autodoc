@@ -56,7 +56,7 @@ class HierarchyExtractor:
 
         self._visited_files: set[str] = set()
         self._hierarchy_data: list[dict[str, Any]] = []
-        self._modules_used: dict[str, list[dict[str, str]]] = {}
+        self._modules_used: dict[str, list[dict[str, str | int]]] = {}
         self._station_globals: list[dict[str, str]] = extract_station_globals(engine)
 
     @property
@@ -64,7 +64,7 @@ class HierarchyExtractor:
         return self._hierarchy_data
 
     @property
-    def modules_used(self) -> dict[str, list[dict[str, str]]]:
+    def modules_used(self) -> dict[str, list[dict[str, str | int]]]:
         return self._modules_used
 
     @property
@@ -88,9 +88,10 @@ class HierarchyExtractor:
         self._visited_files.add(abs_path)
 
         try:
+            options = GetSeqFileOption.FindFile | GetSeqFileOption.DoNotRunLoadCallback
             sequence_file = self.engine.get_sequence_file_ex(
                 abs_path,
-                GetSeqFileOption.FindFile,
+                options,
                 ConflictHandler.Error,
             )
             file_data: dict[str, Any] = {
@@ -296,8 +297,20 @@ class HierarchyExtractor:
                 if module_info:
                     if file_path not in self._modules_used:
                         self._modules_used[file_path] = []
-                    if module_info not in self._modules_used[file_path]:
-                        self._modules_used[file_path].append(module_info)
+
+                    found = False
+                    for m in self._modules_used[file_path]:
+                        # Compare path and type to aggregate occurrences
+                        if m.get("path") == module_info.get("path") and m.get(
+                            "type"
+                        ) == module_info.get("type"):
+                            m["occurrences"] = int(m.get("occurrences", 1)) + 1
+                            found = True
+                            break
+                    if not found:
+                        m_copy = dict(module_info)
+                        m_copy["occurrences"] = 1
+                        self._modules_used[file_path].append(m_copy)
 
                 if step.step_type_name == "NI_MultipleNumericLimitTest":
                     expanded = expand_multiple_numeric_step(

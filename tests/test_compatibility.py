@@ -26,7 +26,7 @@ def test_static_site_generators_compatibility(engine, seq_file):
     for seq in valid_examples:
         ext = Extractor(
             engine,
-            extended_syntax=True,
+            include_flowcharts=True,
             include_process_models=True,
             include_scopes=["Locals", "Parameters"],
             include_station_options=True,

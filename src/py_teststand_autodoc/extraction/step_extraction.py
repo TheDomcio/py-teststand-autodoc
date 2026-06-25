@@ -139,6 +139,16 @@ def build_step_data(
         "skipped": skipped,
     }
 
+    try:
+        step_data["logic"] = {
+            "pre_expression": getattr(step, "pre_expression", "").strip(),
+            "post_expression": getattr(step, "post_expression", "").strip(),
+            "status_expression": getattr(step, "status_expression", "").strip(),
+            "loop_type": getattr(step, "loop_type", 0),
+        }
+    except Exception as e:
+        logger.debug(f"Could not read logic properties: {e}")
+
     if module_info and module_info.get("parameters"):
         step_data["module_parameters"] = module_info["parameters"]
 

@@ -5,7 +5,24 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_MARKDOWN_EXTENSIONS = ["tables", "fenced_code", "sane_lists", "attr_list", "admonition"]
+_MARKDOWN_EXTENSIONS = [
+    "tables",
+    "fenced_code",
+    "sane_lists",
+    "attr_list",
+    "admonition",
+    "pymdownx.details",
+    "pymdownx.emoji",
+    "pymdownx.superfences",
+]
+
+_MARKDOWN_EXTENSION_CONFIGS: dict[str, dict] = {
+    "pymdownx.superfences": {
+        "custom_fences": [
+            {"name": "mermaid", "class": "mermaid"},
+        ],
+    },
+}
 
 _INSTALL_HINT = "Install the 'pdf' extra: uv pip install \"py-teststand-autodoc[pdf]\""
 
@@ -18,24 +35,6 @@ def _load_page_css() -> str:
     return css_path.read_text(encoding="utf-8")
 
 
-def make_svg_responsive(svg_content: str) -> str:
-    """Make raw SVG responsive to scale down to fit container."""
-    match = re.search(r"<svg([^>]+)>", svg_content)
-    if not match:
-        return svg_content
-
-    attrs_str = match.group(1)
-
-    # Remove fixed width, height, and style attributes to prevent overrides
-    attrs_str = re.sub(r"\bwidth\s*=\s*\"[^\"]*\"", "", attrs_str)
-    attrs_str = re.sub(r"\bheight\s*=\s*\"[^\"]*\"", "", attrs_str)
-    attrs_str = re.sub(r"\bstyle\s*=\s*\"[^\"]*\"", "", attrs_str)
-
-    new_attrs = attrs_str.strip()
-
-    return svg_content[: match.start()] + f"<svg {new_attrs}>" + svg_content[match.end() :]
-
-
 def markdown_to_html(markdown_text: str, custom_css: str | None = None) -> str:
     """Convert Markdown to standalone HTML with print CSS.
 
@@ -43,17 +42,13 @@ def markdown_to_html(markdown_text: str, custom_css: str | None = None) -> str:
         custom_css: Optional CSS string to inject (can override accent color).
 
     """
-    import tempfile
 
     try:
         import markdown as markdown_lib
     except ImportError as error:
         raise RuntimeError("markdown is not installed. " + _INSTALL_HINT) from error
 
-    try:
-        from mermaid import Mermaid
-    except ImportError as error:
-        raise RuntimeError("mermaid-py is not installed.") from error
+    # We no longer import mermaid-py. Mermaid is rendered client-side by Playwright.
 
     # Extract author/company/version from markdown and build HTML header
     _meta_re = re.compile(r"^\*\*(Author|Company|Email|Version)\*\*:\s*")
@@ -112,44 +107,44 @@ def markdown_to_html(markdown_text: str, custom_css: str | None = None) -> str:
     for ml in meta_lines:
         ml = ml.strip()
         if ml:
-            html_line = _meta_re.sub(r"<strong>\1</strong>: ", ml)
+            escaped_ml = ml.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            html_line = _meta_re.sub(r"<strong>\1</strong>: ", escaped_ml)
             items.append(f"<div class='meta-item'>{html_line}</div>")
     if items:
         header_html = "<div class='doc-header'>" + "\n".join(items) + "</div>"
 
-    # Replace mermaid blocks with SVG rendered via mermaid-py
-    def replace_mermaid(match: re.Match) -> str:
-        code = match.group(1).strip()
-        try:
-            m = Mermaid(code)
-            with tempfile.NamedTemporaryFile(suffix=".svg", delete=False) as f:
-                temp_path = Path(f.name)
-            try:
-                m.to_svg(str(temp_path))
-                with temp_path.open(encoding="utf-8") as svg_file:
-                    svg_content = svg_file.read()
-                svg_content = make_svg_responsive(svg_content)
-                return (
-                    f'<div class="mermaid-diagram" style="text-align: center;">\n'
-                    f"{svg_content}\n</div>"
-                )
-            finally:
-                if temp_path.exists():
-                    temp_path.unlink()
-        except Exception as e:
-            return f"<pre>Failed to render diagram: {e}</pre>"
-
-    processed_text = re.sub(
-        r"```mermaid\s+(.*?)```",
-        replace_mermaid,
-        markdown_text,
-        flags=re.DOTALL,
-    )
+    # Mermaid rendered client-side via pymdownx.superfences custom fence
 
     css = _load_page_css()
+    font_path = Path(__file__).parent.parent / "assets" / "UbuntuNerdFont-Regular.ttf"
+    if font_path.exists():
+        import base64
+
+        font_data = base64.b64encode(font_path.read_bytes()).decode("utf-8")
+        font_url = f"data:font/ttf;base64,{font_data}"
+        css = css.replace("@@FONT_PATH@@", font_url)
+    else:
+        css = css.replace("@@FONT_PATH@@", "")
+
     if custom_css:
         css += "\n" + custom_css
-    body = markdown_lib.markdown(processed_text, extensions=_MARKDOWN_EXTENSIONS)
+    # Build Markdown extensions configuration
+    extension_configs = dict(_MARKDOWN_EXTENSION_CONFIGS)
+    try:
+        import zensical.extensions.emoji
+
+        extension_configs["pymdownx.emoji"] = {
+            "emoji_index": zensical.extensions.emoji.twemoji,
+            "emoji_generator": zensical.extensions.emoji.to_svg,
+        }
+    except ImportError:
+        pass
+
+    body = markdown_lib.markdown(
+        markdown_text,
+        extensions=_MARKDOWN_EXTENSIONS,
+        extension_configs=extension_configs,
+    )
 
     return (
         "<!doctype html><html><head><meta charset='utf-8'><style>"
@@ -210,8 +205,59 @@ class PlaywrightPdfPrinter:
             raise RuntimeError("PlaywrightPdfPrinter must be entered as a context manager first")
 
         page = self._browser.new_page()
+
+        def block_external(route):
+            url = route.request.url
+            if url.startswith("file://") or url.startswith("data:"):
+                route.continue_()
+            else:
+                route.abort()
+
+        page.route("**/*", block_external)
+
         try:
-            page.set_content(html, wait_until="networkidle")
+            page.set_content(html, wait_until="load")
+
+            # Load mermaid from bundled assets
+            local_mermaid_path = Path(__file__).parent.parent / "assets" / "mermaid.min.js"
+            if local_mermaid_path.exists():
+                page.add_script_tag(path=local_mermaid_path)
+            else:
+                raise RuntimeError("Bundled mermaid.min.js not found in assets.")
+            page.wait_for_function("typeof mermaid !== 'undefined'")
+
+            page.evaluate("""
+                async () => {
+                    try {
+                        mermaid.initialize({ startOnLoad: false, theme: 'default' });
+                        const diagrams = document.querySelectorAll('pre.mermaid');
+                        for (let i = 0; i < diagrams.length; i++) {
+                            const el = diagrams[i];
+                            const code = el.textContent.trim();
+                            const { svg } = await mermaid.render('mermaid_' + i, code);
+                            el.innerHTML = svg;
+                        }
+                        document.querySelectorAll('pre.mermaid svg').forEach(svg => {
+                            let width = svg.getAttribute('width');
+                            let height = svg.getAttribute('height');
+                            if (!svg.hasAttribute('viewBox') && width && height) {
+                                let w = width.replace(/[^0-9.]/g, '');
+                                let h = height.replace(/[^0-9.]/g, '');
+                                if (w && h) {
+                                    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+                                }
+                            }
+                            svg.removeAttribute('style');
+                        });
+                    } catch(e) {
+                        console.error('mermaid error:', e);
+                    }
+                }
+            """)
+
+            # Now wait for any images to load and network to settle
+            page.wait_for_load_state("networkidle")
+
             page.pdf(
                 path=str(pdf_path.resolve()),
                 display_header_footer=False,
@@ -229,9 +275,21 @@ class PlaywrightPdfPrinter:
     ) -> Path:
         """Render Markdown file to PDF next to it or at pdf_path."""
         markdown_path = Path(markdown_path)
+
+        content = markdown_path.read_text(encoding="utf-8-sig")
+        if (
+            content.lstrip().startswith("<?xml")
+            or content.lstrip().startswith("<NAME_IN_ATTRIBUTE")
+            or content.lstrip().startswith("<teststandfileheader")
+        ):
+            raise ValueError(
+                f"File '{markdown_path.name}' appears to be raw XML content. "
+                "The PDF generator requires a Markdown file as input."
+            )
+
         pdf_path = Path(pdf_path) if pdf_path else markdown_path.with_suffix(".pdf")
         html = markdown_to_html(
-            markdown_path.read_text(encoding="utf-8"),
+            content,
             custom_css=self._custom_css,
         )
         self.print_html(html, pdf_path)

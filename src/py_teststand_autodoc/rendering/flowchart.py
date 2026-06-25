@@ -7,10 +7,12 @@ with back edges, SequenceCall as subroutines, other steps as boxes.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict, deque
 from typing import Any
 
 # NI flow-control step type names (Sequencer built-in step types).
+# They map directly to control flow logic in the Mermaid diagram.
 FLOW_IF = "NI_Flow_If"
 FLOW_ELSEIF = "NI_Flow_ElseIf"
 FLOW_ELSE = "NI_Flow_Else"
@@ -19,6 +21,7 @@ FLOW_SELECT = "NI_Flow_Select"
 FLOW_CASE = "NI_Flow_Case"
 FLOW_BREAK = "NI_Flow_Break"
 FLOW_CONTINUE = "NI_Flow_Continue"
+
 FLOW_LOOPS = frozenset(
     {
         "NI_Flow_For",
@@ -40,6 +43,7 @@ _CLASS_DEFS = [
     "    classDef action fill:#f3f4f6,stroke:#6c757d,color:#212529;",
     "    classDef popup fill:#fff9c4,stroke:#f9a825,color:#212529;",
     "    classDef timer fill:#e8f5e9,stroke:#388e3c,color:#212529;",
+    "    classDef label fill:#fcf8e3,stroke:#faebcc,color:#8a6d3b,stroke-dasharray: 5 5;",
 ]
 
 _SHAPE_CLASS = {
@@ -50,12 +54,82 @@ _SHAPE_CLASS = {
     "box": "action",
     "popup": "popup",
     "timer": "timer",
+    "label": "label",
 }
 
 
-def diagram_label(text: str, fallback: str, max_length: int = 48) -> str:
+def translate_expression(expr: str) -> str:
+    """Make TestStand expressions more human-readable for diagrams."""
+    if not expr:
+        return expr
+
+    # Previous Step Status
+    expr = re.sub(
+        r'RunState\.PreviousStep\.Result\.Status\s*==\s*["\']Passed["\']',
+        "Previous Step Passed",
+        expr,
+        flags=re.IGNORECASE,
+    )
+    expr = re.sub(
+        r'RunState\.PreviousStep\.Result\.Status\s*==\s*["\']Failed["\']',
+        "Previous Step Failed",
+        expr,
+        flags=re.IGNORECASE,
+    )
+    expr = re.sub(
+        r'RunState\.PreviousStep\.Result\.Status\s*!=\s*["\']Passed["\']',
+        "Previous Step NOT Passed",
+        expr,
+        flags=re.IGNORECASE,
+    )
+    expr = re.sub(
+        r'RunState\.PreviousStep\.Result\.Status\s*!=\s*["\']Failed["\']',
+        "Previous Step NOT Failed",
+        expr,
+        flags=re.IGNORECASE,
+    )
+    expr = re.sub(
+        r"RunState\.PreviousStep\.Result\.PassFail\s*==\s*True",
+        "Previous Step Passed",
+        expr,
+        flags=re.IGNORECASE,
+    )
+    expr = re.sub(
+        r"RunState\.PreviousStep\.Result\.PassFail\s*==\s*False",
+        "Previous Step Failed",
+        expr,
+        flags=re.IGNORECASE,
+    )
+
+    # Current Step Status
+    expr = re.sub(
+        r'Step\.Result\.Status\s*==\s*["\']Passed["\']', "Step Passed", expr, flags=re.IGNORECASE
+    )
+    expr = re.sub(
+        r'Step\.Result\.Status\s*==\s*["\']Failed["\']', "Step Failed", expr, flags=re.IGNORECASE
+    )
+    expr = re.sub(
+        r'Step\.Result\.Status\s*!=\s*["\']Passed["\']',
+        "Step NOT Passed",
+        expr,
+        flags=re.IGNORECASE,
+    )
+    expr = re.sub(
+        r'Step\.Result\.Status\s*!=\s*["\']Failed["\']',
+        "Step NOT Failed",
+        expr,
+        flags=re.IGNORECASE,
+    )
+
+    # Cleanup prefix boilerplate
+    expr = expr.replace("RunState.PreviousStep.", "PreviousStep.")
+    expr = expr.replace("Step.Result.", "")
+    return expr
+
+
+def diagram_label(text: str, fallback: str, max_length: int = 80) -> str:
     """Short, quote-safe label for Mermaid node or edge."""
-    label = (text or "").strip() or fallback
+    label = translate_expression(text or "").strip() or fallback
     label = label.replace("\n", " ").replace('"', "'").replace("|", "/")
     if len(label) > max_length:
         label = label[: max_length - 3].rstrip() + "..."
@@ -79,7 +153,11 @@ def is_flow_control(step_type: str) -> bool:
     return step_type.startswith("NI_Flow_")
 
 
-def build_flowchart(steps: list[dict[str, Any]], detailed_popup_messages: bool = False) -> str:
+def build_flowchart(
+    steps: list[dict[str, Any]],
+    detailed_popup_messages: bool = True,
+    include_flowcharts: bool = True,
+) -> str:
     """Return Mermaid source for a step group, or empty string if there is none."""
     if not steps:
         return ""
@@ -107,17 +185,78 @@ def build_flowchart(steps: list[dict[str, Any]], detailed_popup_messages: bool =
         if pos in exec_idx_by_pos:
             name_positions[step.get("name", "")].append(pos)
 
+    nid_by_step_id: dict[str, str] = {}
+
     def new_id() -> str:
         counter["n"] += 1
         return "n" + str(counter["n"])
+
+    icon_map = {
+        "SeqAdp": "\uf0c1",
+        "SequenceCall": "\uf0c1",
+        "MessagePopup": "\uf075",
+        "PassFail": "\uf00c",
+        "PassFailTest": "\uf00c",
+        "NumericLimit": "\uf292",
+        "NumericLimitTest": "\uf292",
+        "StringValue": "\uf031",
+        "StringValueTest": "\uf031",
+        "Action": "\uf0e7",
+        "Label": "\uf02b",
+        "Statement": "\uf121",
+        "CallExecutable": "\uf013",
+        "Wait": "\uf017",
+        "NI_Wait": "\uf017",
+        "PropertyLoader": "\uf1c0",
+        "NI_PropertyLoader": "\uf1c0",
+        "Database": "\uf1c0",
+        "NI_Database": "\uf1c0",
+        "NI_OpenDatabase": "\uf1c0",
+        "NI_CloseDatabase": "\uf1c0",
+        "NI_OpenSQLStatement": "\uf1c0",
+        "NI_CloseSQLStatement": "\uf1c0",
+        "NI_DataOperation": "\uf0ce",
+        "NI_NewCsvFileOutputRecordStream": "\uf15c",
+        "NI_CreateIOSessionAndApplyIOConfig": "\uf1e6",
+        "NI_CloseIOSession": "\uf1e6",
+        "NI_Notification": "\uf0f3",
+        "NI_Rendezvous": "\uf0c0",
+        "NI_Semaphore": "\uf024",
+        "NI_Lock": "\uf023",
+        "NI_Queue": "\uf0cb",
+        "NI_AutoSchedule": "\uf073",
+        "NI_UseAutoScheduledResource": "\uf073",
+        "NI_ThreadPriority": "\uf0dc",
+        "NI_BatchSpec": "\uf15c",
+        "NI_BatchSpecification": "\uf15c",
+        "NI_CpuAffinity": "\uf2db",
+        "DotNet": "\uf17a",
+        "MultipleNumericLimit": "\uf292",
+        "NI_MultipleNumericLimitTest": "\uf292",
+        "NI_Flow_If": "",
+        "NI_Flow_ElseIf": "",
+        "NI_Flow_Else": "",
+        "NI_Flow_Select": "",
+        "NI_Flow_Case": "",
+        "NI_Flow_For": "\uf01e",
+        "NI_Flow_ForEach": "\uf01e",
+        "NI_Flow_While": "\uf01e",
+        "NI_Flow_DoWhile": "\uf01e",
+        "NI_Flow_Break": "\uf08b",
+        "NI_Flow_Continue": "\uf090",
+        "NI_Flow_End": "",
+    }
 
     def add_node(shape: str, label: str, step: dict[str, Any] | str = "") -> str:
         nid = new_id()
         step_name = ""
         step_id = ""
+        kind = ""
+        run_mode: str | None = None
         if isinstance(step, dict):
             step_name = step.get("name", "")
             step_id = step.get("id") or ""
+            kind = step.get("type", "")
         else:
             step_name = step
 
@@ -127,7 +266,97 @@ def build_flowchart(steps: list[dict[str, Any]], detailed_popup_messages: bool =
             pos = pos_queue.popleft()
             idx = exec_idx_by_pos.get(pos)
             if idx is not None:
-                label = f"[{idx}] {label}"
+                label = f"{idx + 1}. {label}"
+
+        if isinstance(step, dict):
+            settings = step.get("step_settings", {})
+            icon_file = settings.get("Icon", "")
+            icon_name = icon_file.replace(".ico", "").replace(".png", "") if icon_file else ""
+            emoji = icon_map.get(icon_name, "") or icon_map.get(kind, "")
+            if emoji:
+                label = f"{emoji} {label}"
+
+            run_mode = settings.get("RunMode")
+
+            exprs = step.get("expressions") or {}
+            limits = step.get("limits") or {}
+            extras = []
+
+            # Indicator badges
+            indicators = ""
+            if exprs.get("pre_expr"):
+                indicators += "[Pre]"
+            if exprs.get("loop_type"):
+                indicators += "[Loop]"
+            if exprs.get("record_result", "").lower() == "false":
+                indicators += "[NoRec]"
+
+            if indicators:
+                label = f"{indicators} {label}"
+
+            if limits:
+
+                def _fmt(v: Any) -> str:
+                    try:
+                        f = float(v)
+                        if f.is_integer():
+                            return str(int(f))
+                        return str(v) if isinstance(v, str) and not v.endswith(".0") else str(f)
+                    except (ValueError, TypeError):
+                        return str(v)
+
+                units = limits.get("units", "")
+                unit_suffix = f" {units}" if units else ""
+                limit_str = ""
+
+                if "string" in limits:
+                    limit_str = f"== {limits['string']}"
+                elif "target" in limits:
+                    limit_str = f"== {_fmt(limits['target'])}"
+                else:
+                    comp = limits.get("comp", "").upper()
+                    low = _fmt(limits.get("low", ""))
+                    high = _fmt(limits.get("high", ""))
+
+                    if comp in ("LOGAND", "GELE", "GTLT", "GTLE", "GELT") and low and high:
+                        limit_str = f"{low} to {high}{unit_suffix}"
+                    elif comp in ("EQ", "==") and low == high:
+                        limit_str = f"== {low}{unit_suffix}"
+                    elif comp in ("GE", ">=") and low:
+                        limit_str = f">= {low}{unit_suffix}"
+                    elif comp in ("GT", ">") and low:
+                        limit_str = f"> {low}{unit_suffix}"
+                    elif comp in ("LE", "<=") and high:
+                        limit_str = f"<= {high}{unit_suffix}"
+                    elif comp in ("LT", "<") and high:
+                        limit_str = f"< {high}{unit_suffix}"
+                    elif comp in ("NE", "!=") and low:
+                        limit_str = f"!= {low}{unit_suffix}"
+                    if limit_str:
+                        extras.append(f"Limits: {diagram_label(limit_str, '', 80)}")
+
+                if exprs.get("pre_expr"):
+                    extras.append(f"Pre: {diagram_label(exprs['pre_expr'], '', 80)}")
+                if exprs.get("post_expr"):
+                    extras.append(f"Post: {diagram_label(exprs['post_expr'], '', 80)}")
+                if exprs.get("status_expr"):
+                    extras.append(f"Status: {diagram_label(exprs['status_expr'], '', 80)}")
+                if exprs.get("loop_type"):
+                    extras.append(f"Loop: {exprs['loop_type']}")
+                if exprs.get("report_text"):
+                    extras.append(f"Report: {diagram_label(exprs['report_text'], '', 80)}")
+                if exprs.get("record_result"):
+                    extras.append(f"Record: {exprs['record_result']}")
+
+            if settings:
+                if settings.get("Load Opt"):
+                    extras.append(f"Load: {settings['Load Opt']}")
+                if settings.get("Unload Opt"):
+                    extras.append(f"Unload: {settings['Unload Opt']}")
+
+            if extras:
+                label += "<br/>" + "<br/>".join(f"<i>{e}</i>" for e in extras)
+
         quoted = '"' + label + '"'
         if shape == "decision":
             body = nid + "{" + quoted + "}"
@@ -143,8 +372,13 @@ def build_flowchart(steps: list[dict[str, Any]], detailed_popup_messages: bool =
             body = nid + "[" + quoted + "]"
         node_lines.append("    " + body + ":::" + _SHAPE_CLASS.get(shape, "action"))
 
+        # Override node style if step is skipped
+        if isinstance(step, dict) and run_mode == "Skip":
+            node_lines.append(f"    style {nid} stroke-dasharray: 5 5,color:#a0a0a0,stroke:#a0a0a0")
+
         # Add link to anchor in Markdown using Step's unique ID
         if step_id:
+            nid_by_step_id[step_id] = nid
             import re
 
             safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", step_id)
@@ -243,8 +477,7 @@ def build_flowchart(steps: list[dict[str, Any]], detailed_popup_messages: bool =
             continue
 
         if step_type in (FLOW_BREAK, FLOW_CONTINUE):
-            nid = add_node("jump", diagram_label(name, step_type.split("_")[-1]), step)
-            attach(nid)
+            nid = add_node("action", diagram_label(name, "Action"), step)
             # Find the innermost loop frame
             loop_frame = next((f for f in reversed(stack) if f["kind"] == "loop"), None)
             if loop_frame:
@@ -294,7 +527,7 @@ def build_flowchart(steps: list[dict[str, Any]], detailed_popup_messages: bool =
             exprs = step.get("expressions", {})
             raw_time = exprs.get("time_to_wait") or exprs.get("expression") or ""
             wait_label = _normalize_wait(raw_time) if raw_time else name
-            nid = add_node("timer", diagram_label(f"⏱ {wait_label}", "Wait"), step)
+            nid = add_node("timer", diagram_label(f"\uf017 {wait_label}", "Wait"), step)
             attach(nid)
             pending[:] = [(nid, None)]
             continue
@@ -310,10 +543,55 @@ def build_flowchart(steps: list[dict[str, Any]], detailed_popup_messages: bool =
             pending[:] = [(nid, None)]
             continue
 
+        logic = step.get("logic", {}) if include_flowcharts else {}
+        pre_expr = logic.get("pre_expression")
+        post_expr = logic.get("post_expression")
+        status_expr = logic.get("status_expression")
+        loop_type = logic.get("loop_type", 0)
+
+        # 1. Pre-expression / Precondition
+        if pre_expr:
+            pre_nid = add_node(
+                "action", diagram_label(f"Pre: {pre_expr}", "PreExpr", max_length=64)
+            )
+            attach(pre_nid)
+            pending[:] = [(pre_nid, None)]
+
+        # 2. Step-Level Loop Header
+        loop_nid = None
+        if loop_type and str(loop_type) not in ("0", "NoLooping", "LoopType_NoLoop"):
+            loop_nid = add_node("loop", diagram_label(f"Step Loop ({loop_type})", "Loop"))
+            attach(loop_nid)
+            pending[:] = [(loop_nid, "each")]
+
+        # 3. Main Step Node
         shape = "box"
-        nid = add_node(shape, diagram_label(name, step_type or "Step"), step)
+        if step_type == "Label":
+            shape = "label"
+        elif step_type == "MessagePopup":
+            shape = "popup"
+
+        main_label = diagram_label(name, step_type or "Step")
+        if status_expr:
+            main_label += f"<br/><i>Status: {diagram_label(status_expr, '', max_length=64)}</i>"
+
+        nid = add_node(shape, main_label, step)
         attach(nid)
-        pending[:] = [(nid, None)]
+
+        # 4. Step-Level Loop Footer
+        if loop_nid:
+            edge_lines.append("    " + nid + ' -->|"repeat"| ' + loop_nid)
+            pending[:] = [(loop_nid, "exit")]
+        else:
+            pending[:] = [(nid, None)]
+
+        # 5. Post-expression
+        if post_expr:
+            post_nid = add_node(
+                "action", diagram_label(f"Post: {post_expr}", "PostExpr", max_length=64)
+            )
+            attach(post_nid)
+            pending[:] = [(post_nid, None)]
 
     close_dangling_case()
     while stack:
@@ -336,6 +614,29 @@ def build_flowchart(steps: list[dict[str, Any]], detailed_popup_messages: bool =
                 edge_lines.append(f'    {source} -->|"{diagram_label(label, "")}"| {end_nid}')
             else:
                 edge_lines.append(f"    {source} --> {end_nid}")
+
+    # Add goto branching edges
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        step_id = step.get("id")
+        if not step_id:
+            continue
+        nid = nid_by_step_id.get(step_id)
+        if not nid:
+            continue
+        exprs = step.get("expressions") or {}
+
+        for act_key, tgt_key, lbl in [
+            ("pass_action", "pass_action_target_id", "Pass"),
+            ("fail_action", "fail_action_target_id", "Fail"),
+            ("custom_true_action", "custom_true_target_id", "True"),
+            ("custom_false_action", "custom_false_target_id", "False"),
+        ]:
+            if exprs.get(act_key) in ("GotoStep", "JumpToStep"):
+                tgt_id_raw = exprs.get(tgt_key, "").strip().strip('"')
+                if tgt_id_raw in nid_by_step_id:
+                    edge_lines.append(f'    {nid} -.->|"{lbl}"| {nid_by_step_id[tgt_id_raw]}')
 
     if not node_lines:
         return ""

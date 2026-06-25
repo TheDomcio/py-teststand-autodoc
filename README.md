@@ -19,6 +19,7 @@
   - [Table of contents](#table-of-contents)
   - [📖 Overview](#-overview)
   - [⚠️Transparency](#️transparency)
+  - [🔒 Offline Capability](#-offline-capability)
   - [🚧 Project Status](#-project-status)
     - [🤖 AI-Assisted Development](#-ai-assisted-development)
   - [🚀 Installation](#-installation)
@@ -33,6 +34,7 @@
     - [🌐 Static Site Generators](#-static-site-generators)
   - [🧰 Technical stack](#-technical-stack)
   - [⚖️ Legal](#️-legal)
+  - [📄 License](#-license)
 
 ---
 
@@ -54,6 +56,13 @@ It can be used in two ways:
 This generator does **not** reverse-engineer or natively parse `.seq` files:
 uses my other [py-teststand](https://github.com/TheDomcio/py-teststand) project to interact with TestStand™ COM API.
 This means you need a valid TestStand™ installation and a proper [TestStand™ License](https://www.ni.com/docs/en-US/bundle/teststand/page/teststand-licensing-options.html) on the machine running the code.
+
+## 🔒 Offline Capability
+
+**100% Offline Rendering**: To address privacy concerns and support offline environments, all PDF and Markdown generation is performed strictly locally.
+
+- **Diagrams**: Mermaid.js diagrams are rendered entirely client-side using a bundled `mermaid.min.js` (stored in the package assets) driving a local headless browser session via Playwright.
+- **Fonts**: The PDF styling uses bundled [`UbuntuNerdFont-Regular`](https://www.nerdfonts.com/) and standard pre-installed Windows system fonts (such as `Segoe UI` for text and `Cascadia Code` / `Consolas` for code elements).
 
 ## 🚧 Project Status
 
@@ -245,3 +254,9 @@ information on required licenses to operate the TestStand™ engine.
 by, or maintained by National Instruments or its parent company
 [Emerson](https://www.emerson.com). References to the TestStand™ API are made
 solely for interoperability purposes.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file and [src/py_teststand_autodoc/assets/LICENSE](src/py_teststand_autodoc/assets/LICENSE-3RD-PARTY.txt).

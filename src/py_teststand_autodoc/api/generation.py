@@ -1,4 +1,4 @@
-"""Sequencer documentation entry points."""
+"""Generators for sequence documentation and station reports."""
 
 from __future__ import annotations
 
@@ -11,8 +11,7 @@ from typing import Any
 
 from py_teststand import Engine
 
-from .extraction.extractor import HierarchyExtractor
-from .rendering.formatter import Formatter
+from .facade import Extractor
 
 logger = logging.getLogger(__name__)
 
@@ -26,103 +25,6 @@ VALID_BROWSERS: tuple[str, ...] = ("msedge", "chrome", "chromium")
 """Valid Chromium channel names for the ``browser`` parameter of :func:`generate_documentation`."""
 
 
-class Extractor:
-    """Main API for generating sequencer documentation."""
-
-    def __init__(
-        self,
-        engine: Any,
-        include_process_models: bool = False,
-        include_scopes: list[str] | None = None,
-        include_station_options: bool = False,
-        include_types: bool = False,
-        include_file_custom_data_types: bool = False,
-        types_attached_only: bool = True,
-        profile: str = "engineer",
-        ignore_skipped: bool = False,
-        extended_syntax: bool = True,
-        estimate_software_delays: bool = False,
-        detailed_popup_messages: bool = False,
-        author: str = "Jan Kowalski",
-        company: str = "Yesterday Future Company",
-        email: str = "jan.kowalski@example.com",
-        version: str = "1.0.0",
-        include_path: bool = False,
-        company_logo: str | None = None,
-    ):
-        """Set up documentation generator.
-
-        Args:
-            engine: Sequencer Engine COM object from py_teststand.Engine().
-            include_process_models: Include process model sequences in output.
-            include_scopes: Variable scopes to include in the Variables appendix.
-                Valid values: 'Locals', 'Parameters', 'FileGlobals', 'StationGlobals'
-                (see VALID_SCOPES). None skips the appendix entirely.
-            include_station_options: Include station configuration table.
-            include_types: Include custom type definitions from the file.
-            include_file_custom_data_types: Include all data types defined in file.
-            types_attached_only: When True, only types referenced by the file are
-                listed. When False, all types from the types window are shown.
-            profile: Report layout. 'engineer' gives step tables and variables.
-                'business' gives a Mermaid flowchart and outline.
-            ignore_skipped: Exclude steps in Skip run mode from documentation.
-            extended_syntax: Enable rich MkDocs Material syntax (admonitions).
-            estimate_software_delays: Sum Wait step expressions to estimate
-                minimum software delays per sequence.
-            detailed_popup_messages: Show MessagePopup button and timeout details
-                in Mermaid flowchart nodes.
-            author: Author name printed in the document header.
-            company: Company name printed in the document header.
-            email: Author email printed in the document header.
-            version: Document version string printed in the header.
-            include_path: Include source file path subtitle in the header.
-            company_logo: Optional path to a PNG logo to display above the author.
-
-        """
-        self.engine = engine
-        self.extractor = HierarchyExtractor(
-            engine,
-            include_process_models,
-            include_scopes,
-            ignore_skipped,
-            estimate_software_delays,
-            include_file_custom_data_types,
-        )
-        self.formatter = Formatter(
-            profile=profile,
-            extended_syntax=extended_syntax,
-            include_station_options=include_station_options,
-            include_types=include_types,
-            include_file_custom_data_types=include_file_custom_data_types,
-            types_attached_only=types_attached_only,
-            author=author,
-            company=company,
-            email=email,
-            version=version,
-            detailed_popup_messages=detailed_popup_messages,
-            include_path=include_path,
-            company_logo=company_logo,
-        )
-
-    def analyze_hierarchy(self, file_path: str, depth: int = 0) -> None:
-        """Walk the sequence file and all called subsequences.
-
-        Args:
-            file_path: Absolute path to a .seq file.
-            depth: Recursion depth for called sequences (0 = top level).
-
-        """
-        self.extractor.extract(file_path, depth)
-
-    def to_markdown(self) -> str:
-        """Render collected hierarchy data to Markdown."""
-        return self.formatter.format(
-            self.extractor.hierarchy_data,
-            self.extractor.modules_used,
-            self.engine,
-        )
-
-
 def generate_station_options_report(engine: Any) -> str:
     """Generate a standalone station options report without sequence input.
 
@@ -133,7 +35,7 @@ def generate_station_options_report(engine: Any) -> str:
         Markdown string containing station configuration tables.
 
     """
-    from .rendering.station_options import append_station_options
+    from ..rendering.station_options import append_station_options
 
     md: list[str] = []
     md.append("<!-- markdownlint-disable MD013 MD024 MD036 MD046 MD051 -->")
@@ -168,7 +70,7 @@ def generate_documentation(
     source: str | Path = "",
     output: str | Path | None = None,
     profile: str = "engineer",
-    extended_syntax: bool = True,
+    include_flowcharts: bool = True,
     ignore_skipped: bool = False,
     include_models: bool = False,
     include_scopes: list[str] | None = None,
@@ -177,17 +79,16 @@ def generate_documentation(
     include_file_custom_data_types: bool = False,
     types_attached_only: bool = True,
     estimate_software_delays: bool = False,
-    detailed_popup_messages: bool = False,
+    detailed_popup_messages: bool = True,
     author: str = "Jan Kowalski",
     company: str = "Yesterday Future Company",
-    email: str = "jan.kowalski@example.com",
+    email: str = "jan.kowalski@yesterdayfuturecompany.pl",
     version: str = "1.0.0",
     pdf: bool = False,
     custom_css: str | Path | None = None,
     browser: str = "msedge",
     batch: bool | None = None,
     station_report: bool = False,
-    include_path: bool = False,
     company_logo: str | None = None,
 ) -> Path | list[Path] | str:
     """Generate documentation from a sequence file or directory.
@@ -203,7 +104,8 @@ def generate_documentation(
         profile: Report layout. 'engineer' gives step tables and variables.
             'business' gives a Mermaid flowchart and outline.
             'station' generates a station options report (ignores source).
-        extended_syntax: Enable rich MkDocs Material syntax (admonitions).
+        include_flowcharts: Include all possible logic (Preconditions, Loop
+            Settings, etc.) in Mermaid flowcharts.
         ignore_skipped: Exclude steps in Skip run mode from documentation.
         include_models: Include process model sequences in output.
         include_scopes: Variable scopes to include in the Variables appendix.
@@ -267,7 +169,7 @@ def generate_documentation(
                 Path(output) if output else None,
                 engine,
                 profile=profile,
-                extended_syntax=extended_syntax,
+                include_flowcharts=include_flowcharts,
                 ignore_skipped=ignore_skipped,
                 include_models=include_models,
                 include_scopes=include_scopes,
@@ -284,7 +186,6 @@ def generate_documentation(
                 pdf=pdf,
                 custom_css=custom_css,
                 browser=browser,
-                include_path=include_path,
                 company_logo=company_logo,
             )
 
@@ -302,7 +203,7 @@ def generate_documentation(
         ext = Extractor(
             engine,
             profile=profile,
-            extended_syntax=extended_syntax,
+            include_flowcharts=include_flowcharts,
             include_process_models=include_models,
             include_scopes=include_scopes,
             include_station_options=include_station_options,
@@ -316,7 +217,6 @@ def generate_documentation(
             company=company,
             email=email,
             version=version,
-            include_path=include_path,
             company_logo=company_logo,
         )
         ext.analyze_hierarchy(str(source_path))
@@ -340,7 +240,7 @@ def _batch_generate(
     engine: Any,
     *,
     profile: str,
-    extended_syntax: bool,
+    include_flowcharts: bool,
     ignore_skipped: bool,
     include_models: bool,
     include_scopes: list[str] | None,
@@ -357,7 +257,7 @@ def _batch_generate(
     pdf: bool,
     custom_css: str | Path | None,
     browser: str,
-    include_path: bool = False,
+    show_paths: bool = False,
     company_logo: str | None = None,
 ) -> list[Path]:
     """Generate documentation for every .seq file under source_dir."""
@@ -376,7 +276,7 @@ def _batch_generate(
             ext = Extractor(
                 engine,
                 profile=profile,
-                extended_syntax=extended_syntax,
+                include_flowcharts=include_flowcharts,
                 include_process_models=include_models,
                 include_scopes=include_scopes,
                 include_station_options=include_station_options,
@@ -390,7 +290,7 @@ def _batch_generate(
                 company=company,
                 email=email,
                 version=version,
-                include_path=include_path,
+                show_paths=show_paths,
                 company_logo=company_logo,
             )
             ext.analyze_hierarchy(str(target))
@@ -406,7 +306,7 @@ def _batch_generate(
 
 def _render_pdf(md_path: Path, custom_css: str | Path | None, browser: str) -> None:
     """Render Markdown to PDF via headless browser."""
-    from .cli.helpers import render_pdf_cli
+    from ..cli.helpers import render_pdf_cli
 
     render_pdf_cli(md_path, custom_css=custom_css, browser=browser)
 

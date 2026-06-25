@@ -17,7 +17,7 @@ def main() -> None:
         source=sys.argv[1],
         output=sys.argv[2],
         profile="engineer",
-        extended_syntax=True,
+        include_flowcharts=True,
         batch=True,
     )
 

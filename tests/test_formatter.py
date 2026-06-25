@@ -18,13 +18,13 @@ class TestFormatter:
         md = fmt.format(hierarchy_data, modules_used)
 
         assert "# test_output" in md
-        assert "### test_output" in md
+        assert "# test_output" in md
         assert "*Entry Point*" in md
         assert "*Subsequence*" in md
         assert "*Engine Callback*" in md
         assert "**Sequences**" in md
-        assert "- Engine Callback: 1" in md
-        assert "- Model Callback: 2" in md
+        assert "Engine Callback: 1" in md
+        assert "Model Callback: 2" in md
 
     def test_engineer_profile_step_table(self, extracted_data):
         hierarchy_data, modules_used = extracted_data
@@ -39,8 +39,8 @@ class TestFormatter:
         fmt = Formatter(profile="business")
         md = fmt.format(hierarchy_data, modules_used)
 
-        assert "- **Setup_Step_1**" in md
-        assert "- **Call_Subsequence_A**" in md
+        assert "Setup_Step_1" in md
+        assert "Call_Subsequence_A" in md
 
     def test_business_profile_no_tech_column(self, extracted_data):
         hierarchy_data, modules_used = extracted_data
@@ -49,17 +49,17 @@ class TestFormatter:
 
         assert "|Technology|" not in md
 
-    def test_extended_syntax_mermaid(self, extracted_data):
+    def test_include_flowcharts_mermaid(self, extracted_data):
         hierarchy_data, modules_used = extracted_data
-        fmt = Formatter(extended_syntax=True)
+        fmt = Formatter(include_flowcharts=True)
         md = fmt.format(hierarchy_data, modules_used)
 
         assert "```mermaid" in md
         assert "flowchart TD" in md
 
-    def test_extended_syntax_admonitions(self, extracted_data):
+    def test_include_flowcharts_admonitions(self, extracted_data):
         hierarchy_data, modules_used = extracted_data
-        fmt = Formatter(extended_syntax=True)
+        fmt = Formatter(include_flowcharts=True)
         md = fmt.format(hierarchy_data, modules_used)
 
         assert "```mermaid" in md
@@ -102,7 +102,7 @@ class TestFormatter:
         md = fmt.format(hierarchy_data, modules_used)
 
         assert "## Variables" in md
-        assert "MainSequence variables" in md
+        assert "MainSequence" in md
         assert "Local_Var_1" in md
         assert "Param_A" in md
 
@@ -118,7 +118,7 @@ class TestFormatter:
         fmt = Formatter()
         md = fmt.format(hierarchy_data, modules_used)
 
-        seq_file_pos = md.index("### test_output")
+        seq_file_pos = md.index("# test_output")
         callbacks_section = md[seq_file_pos:]
 
         load_pos = callbacks_section.index("SequenceFileLoad")
@@ -178,7 +178,7 @@ class TestFormatter:
                 ],
             },
         ]
-        fmt = Formatter(profile="engineer", extended_syntax=True, detailed_popup_messages=True)
+        fmt = Formatter(profile="engineer", include_flowcharts=True, detailed_popup_messages=True)
         md = fmt.format(hierarchy_data, {})
 
         assert "Warning Title" in md
@@ -252,7 +252,7 @@ class TestFormatter:
                 ],
             },
         ]
-        fmt = Formatter(profile="engineer", extended_syntax=True, detailed_popup_messages=True)
+        fmt = Formatter(profile="engineer", include_flowcharts=True, detailed_popup_messages=True)
         md = fmt.format(hierarchy_data, {})
 
         assert "[1: OK] [2: NOK] [4: Retry]" in md
@@ -290,7 +290,7 @@ class TestFormatter:
                 ],
             },
         ]
-        fmt = Formatter(profile="engineer", extended_syntax=True)
+        fmt = Formatter(profile="engineer", include_flowcharts=True)
         md = fmt.format(hierarchy_data, {})
 
         # Verify the structure has Mermaid block without hanging components
@@ -318,7 +318,7 @@ class TestFormatter:
                 ],
             },
         ]
-        fmt = Formatter(profile="engineer", extended_syntax=True)
+        fmt = Formatter(profile="engineer", include_flowcharts=True)
         md = fmt.format(hierarchy_data, {})
 
         # Verify that break routes to the end correctly
@@ -334,8 +334,8 @@ class TestFormatter:
         assert "test_output.seq" not in md_default
         assert "![Company Logo]" not in md_default
 
-        # Test include_path=True
-        fmt_path = Formatter(profile="engineer", include_path=True)
+        # Test show_paths=True
+        fmt_path = Formatter(profile="engineer", show_paths=True)
         md_path = fmt_path.format(hierarchy_data, modules_used)
         assert "test_output.seq" in md_path
 

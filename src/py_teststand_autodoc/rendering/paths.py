@@ -11,4 +11,14 @@ def display_path(path: str) -> str:
     try:
         return str(Path(path).resolve().relative_to(Path.cwd()))
     except ValueError:
-        return path
+        pass
+
+    # Never list path above user: replace C:\Users\<Username> with ~
+    p = str(Path(path))
+    import re
+
+    # Matches C:\Users\Username\ (case insensitive)
+    p = re.sub(r"^[A-Za-z]:\\Users\\[^\\]+\\", r"~\\", p, flags=re.IGNORECASE)
+    # Also handle forward slashes just in case
+    p = re.sub(r"^[A-Za-z]:/Users/[^/]+/", r"~/", p, flags=re.IGNORECASE)
+    return p

@@ -34,13 +34,15 @@ def extract_routing_properties(step_property_object: Any) -> dict[str, str]:
         exprs["pass_action"] = pass_act
         target = get_ts_string(step_property_object, "TS.PassActTarget")
         if target:
-            exprs["pass_action_target"] = re.sub(r'\[?"ID#:[a-zA-Z0-9+/]+"\]?', '"Step"', target)
+            exprs["pass_action_target_id"] = target
+            exprs["pass_action_target"] = re.sub(r'\[?"ID#:[a-zA-Z0-9+/=]+"\]?', '"Step"', target)
 
     if fail_act and fail_act not in ("0", "", "Next"):
         exprs["fail_action"] = fail_act
         target = get_ts_string(step_property_object, "TS.FailActTarget")
         if target:
-            exprs["fail_action_target"] = re.sub(r'\[?"ID#:[a-zA-Z0-9+/]+"\]?', '"Step"', target)
+            exprs["fail_action_target_id"] = target
+            exprs["fail_action_target"] = re.sub(r'\[?"ID#:[a-zA-Z0-9+/=]+"\]?', '"Step"', target)
 
     # Custom status expression
     status_expr = get_ts_string(step_property_object, "TS.StatusExpr")
@@ -57,11 +59,13 @@ def extract_routing_properties(step_property_object: Any) -> dict[str, str]:
             exprs["custom_true_action"] = cust_true
             t = get_ts_string(step_property_object, "TS.CustTrueActTarget")
             if t:
-                exprs["custom_true_target"] = re.sub(r'\[?"ID#:[a-zA-Z0-9+/]+"\]?', '"Step"', t)
+                exprs["custom_true_target_id"] = t
+                exprs["custom_true_target"] = re.sub(r'\[?"ID#:[a-zA-Z0-9+/=]+"\]?', '"Step"', t)
         if cust_false and cust_false not in ("0", "", "Next"):
             exprs["custom_false_action"] = cust_false
             t = get_ts_string(step_property_object, "TS.CustFalseActTarget")
             if t:
-                exprs["custom_false_target"] = re.sub(r'\[?"ID#:[a-zA-Z0-9+/]+"\]?', '"Step"', t)
+                exprs["custom_false_target_id"] = t
+                exprs["custom_false_target"] = re.sub(r'\[?"ID#:[a-zA-Z0-9+/=]+"\]?', '"Step"', t)
 
     return exprs

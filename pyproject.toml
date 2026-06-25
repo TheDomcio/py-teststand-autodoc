@@ -1,6 +1,6 @@
 [project]
 name = "py-teststand-autodoc"
-version = "0.1.0"
+version = "0.2.0"
 description = "Automated documentation generator for National Instruments TestStand™ sequence files"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -21,7 +21,7 @@ keywords = [
     "python",
 ]
 authors = [{ name = "Dominik Rajchel" }]
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -40,7 +40,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "mermaid-py>=0.8.4",
+    "graphifyy>=0.8.46",
     "py-teststand>=0.2.3",
     "pydantic>=2.13.4",
     "pyrefly>=1.1.0",
@@ -50,7 +50,7 @@ dependencies = [
 # Markdown -> HTML -> PDF rendering through headless Microsoft Edge.
 # channel="msedge" drives the Edge that ships with Windows, so no browser
 # download is needed.
-pdf = ["markdown>=3.5", "playwright>=1.40"]
+pdf = ["markdown>=3.5", "playwright>=1.40", "zensical>=0.0.45"]
 
 [project.urls]
 Homepage = "https://github.com/TheDomcio/py-teststand-autodoc"
@@ -148,7 +148,7 @@ dev = [
     "ty>=0.0.34",
     "types-pywin32",
 ]
-tests = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.6", "zensical>=0.0.45"]
+tests = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.6"]
 
 [tool.ty]
 rules = { "possibly-missing-attribute" = "ignore" }

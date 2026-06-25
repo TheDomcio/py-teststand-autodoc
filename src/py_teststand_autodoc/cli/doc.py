@@ -13,6 +13,76 @@ from py_teststand_autodoc.api import Extractor, generate_station_options_report
 from py_teststand_autodoc.cli.helpers import render_pdf_cli, shutdown_with_watchdog
 
 
+def _extraction_worker(
+    target_str: str,
+    include_models: bool,
+    include_scopes: list[str],
+    include_station: bool,
+    include_types: bool,
+    file_custom_data_types: bool,
+    types_attached_only: bool,
+    profile: str,
+    ignore_skipped: bool,
+    include_flowcharts: bool,
+    estimate_software_delays: bool,
+    detailed_popup_messages: bool,
+    author: str,
+    company: str,
+    email: str,
+    version: str,
+    show_paths: bool,
+    company_logo: str,
+    out_path_str: str,
+    _batch: bool,
+    pdf: bool,
+    custom_css: str | None,
+    browser: str,
+) -> None:
+    """Multiprocessing worker to run Extractor in an isolated process."""
+    import sys
+    from pathlib import Path
+
+    from py_teststand import Engine
+
+    engine = Engine()
+    try:
+        ext = Extractor(
+            engine,
+            include_process_models=include_models,
+            include_scopes=include_scopes,
+            include_station_options=include_station,
+            include_types=include_types,
+            include_file_custom_data_types=file_custom_data_types,
+            types_attached_only=types_attached_only,
+            profile=profile,
+            ignore_skipped=ignore_skipped,
+            include_flowcharts=include_flowcharts,
+            estimate_software_delays=estimate_software_delays,
+            detailed_popup_messages=detailed_popup_messages,
+            author=author,
+            company=company,
+            email=email,
+            version=version,
+            show_paths=show_paths,
+            company_logo=company_logo,
+        )
+        ext.analyze_hierarchy(target_str)
+        md_content = ext.to_markdown()
+
+        out_path = Path(out_path_str) if out_path_str != "-" else "-"
+        if out_path == "-":
+            sys.stdout.write(md_content)
+        else:
+            with out_path.open("w", encoding="utf-8") as f:
+                f.write(md_content)
+            print(f"Documentation saved to: {out_path}")
+            if pdf:
+                render_pdf_cli(out_path, custom_css=custom_css, browser=browser)
+    finally:
+        engine.shutdown()
+        engine.release()
+
+
 def main():
     """Entry point: parse args, init Engine, generate docs."""
     parser = argparse.ArgumentParser(description="Generate Markdown documentation for sequences.")
@@ -69,7 +139,8 @@ def main():
     )
     parser.add_argument(
         "--detailed-popup-messages",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Include MessagePopup step details in Mermaid diagrams",
     )
     parser.add_argument("--author", default="Jan Kowalski", help="Author name for the header")
@@ -80,7 +151,7 @@ def main():
     )
     parser.add_argument(
         "--email",
-        default="jan.kowalski@example.com",
+        default="jan.kowalski@yesterdayfuturecompany.pl",
         help="Author email for the header",
     )
     parser.add_argument(
@@ -105,14 +176,27 @@ def main():
         help="Chromium channel for PDF rendering (default: msedge)",
     )
     parser.add_argument(
-        "--no-path",
+        "--show-paths",
         action="store_true",
-        help="Hide the source file path subtitle in the header",
+        help="Show the source file path subtitle in the header",
     )
     parser.add_argument(
         "--company-logo",
         type=str,
         help="Path to a company logo PNG image file to display in the header",
+    )
+
+    parser.add_argument(
+        "--include-flowcharts",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include detailed Mermaid flowcharts (Preconditions, Loop Settings, etc.)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=0.0,
+        help="Timeout in seconds per file. Forces multiprocessing isolation.",
     )
 
     args = parser.parse_args()
@@ -159,7 +243,7 @@ def main():
         include_models = True
         include_scopes = args.variable_scope or ["Locals", "FileGlobals", "Parameters"]
         include_station = args.station
-        include_types = args.types
+        include_types = False
         detailed_popup_messages = True
         file_custom_data_types = True
         types_attached_only = not args.types_all
@@ -171,6 +255,60 @@ def main():
         detailed_popup_messages = args.detailed_popup_messages
         file_custom_data_types = args.file_custom_data_types
         types_attached_only = not args.types_all
+
+    if args.timeout > 0:
+        import multiprocessing
+
+        for target in targets:
+            print(f"\nProcessing (with timeout {args.timeout}s): {target.name}")
+            out_path_str = (
+                "-"
+                if out_dir is None and args.output == "-"
+                else str(out_dir / f"{target.stem}.md")
+                if args.batch and out_dir is not None
+                else str(args.output)
+                if args.output
+                else "-"
+            )
+
+            p = multiprocessing.Process(
+                target=_extraction_worker,
+                args=(
+                    str(target),
+                    include_models,
+                    include_scopes,
+                    include_station,
+                    include_types,
+                    file_custom_data_types,
+                    types_attached_only,
+                    args.profile,
+                    args.ignore_skipped,
+                    args.include_flowcharts,
+                    args.estimate_software_delays,
+                    detailed_popup_messages,
+                    args.author,
+                    args.company,
+                    args.email,
+                    args.version,
+                    args.show_paths,
+                    args.company_logo,
+                    out_path_str,
+                    args.batch,
+                    args.pdf,
+                    args.custom_css,
+                    args.browser,
+                ),
+            )
+            p.start()
+            p.join(args.timeout)
+            if p.is_alive():
+                print(
+                    f"Error processing {target.name}: TIMEOUT exceeded"
+                    f" {args.timeout}s. Terminating."
+                )
+                p.terminate()
+                p.join()
+        sys.exit(0)
 
     engine = Engine()
     try:
@@ -187,14 +325,14 @@ def main():
                     types_attached_only=types_attached_only,
                     profile=args.profile,
                     ignore_skipped=args.ignore_skipped,
-                    extended_syntax=True,
+                    include_flowcharts=args.include_flowcharts,
                     estimate_software_delays=args.estimate_software_delays,
                     detailed_popup_messages=detailed_popup_messages,
                     author=args.author,
                     company=args.company,
                     email=args.email,
                     version=args.version,
-                    include_path=not args.no_path,
+                    show_paths=args.show_paths,
                     company_logo=args.company_logo,
                 )
                 ext.analyze_hierarchy(str(target))

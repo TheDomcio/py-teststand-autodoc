@@ -30,13 +30,12 @@ class TestExtractorApi:
         assert "Sub_Local_1" in md
         assert "Sub_Param_1" in md
 
-    def test_with_extended_syntax(self, engine, seq_file):
-        ext = Extractor(engine, extended_syntax=True)
+    def test_with_include_flowcharts(self, engine, seq_file):
+        ext = Extractor(engine, include_flowcharts=True)
         ext.analyze_hierarchy(str(seq_file))
         md = ext.to_markdown()
 
         assert "```mermaid" in md
-        assert '!!! info "Description"' in md
 
     def test_with_station_options(self, engine, seq_file):
         ext = Extractor(engine, include_station_options=True)
@@ -64,5 +63,5 @@ class TestExtractorApi:
         ext.analyze_hierarchy(str(seq_file))
         md = ext.to_markdown()
 
-        assert "- **Setup_Step_1**" in md
+        assert "Setup_Step_1" in md
         assert "|Technology|" not in md

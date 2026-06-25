@@ -20,7 +20,7 @@ def main() -> None:
         source=sys.argv[1],
         output=output_path,
         profile="engineer",
-        extended_syntax=True,
+        include_flowcharts=True,
         include_scopes=["Locals", "Parameters", "FileGlobals", "StationGlobals"],
         include_station_options=True,
         author="Jan Kowalski",

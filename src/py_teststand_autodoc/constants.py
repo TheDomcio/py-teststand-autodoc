@@ -58,8 +58,6 @@ class PropertyPath(StrEnum):
     COMP = "Comp"
     UNITS = "Units"
     RESULT_UNITS = "Result.Units"
-    IGNORE_CASE = "IgnoreCase"
-    DATA_SOURCE = "DataSource"
 
     CALL_LIB_PATH = "TS.SData.Call.LibPath"
     CALL_SCRIPT_PATH = "TS.SData.Call.ScriptPath"
@@ -73,14 +71,6 @@ class PropertyPath(StrEnum):
     SEQ_FILE_PATH_EXPR = "TS.SData.SFPathExpr"
     TARGET_SEQUENCE = "TS.SData.SeqName"
     TARGET_SEQUENCE_EXPR = "TS.SData.SeqNameExpr"
-
-    # LabVIEW module SData properties.
-    LV_VI_PATH = "TS.SData.ViCall.VIPath"
-    LV_PROJECT_PATH = "TS.SData.ViCall.ProjectPath"
-    LV_CLASS_PATH = "TS.SData.Class.ClassPath"
-    LV_CALL_TYPE = "TS.SData.CallType"
-    LV_REMOTE_VI_PATH = "TS.SData.RemoteViPath"
-    LV_REMOTE_PROJECT_PATH = "TS.SData.RemoteProjectPath"
 
     MODULE_PATH = "ModulePath"
     DLL_PATH = "DllPath"

@@ -257,13 +257,3 @@ def engine():
 def seq_file(engine):
     create_test_sequence_file(engine, SEQ_FILE_PATH)
     return SEQ_FILE_PATH
-
-
-def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
-    """Exit process immediately to avoid TestStand Engine COM teardown hangs."""
-    import os
-    import sys
-
-    sys.stdout.flush()
-    sys.stderr.flush()
-    os._exit(exitstatus)

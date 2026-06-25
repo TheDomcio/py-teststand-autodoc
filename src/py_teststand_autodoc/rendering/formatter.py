@@ -19,8 +19,8 @@ from .appendices import (
 )
 from .flowchart import FLOW_END, FLOW_OPENERS, build_flowchart, is_flow_control
 from .markdown.tables import format_row, format_sep
-from .markdown.text import code_span, sanitize, slug
-from .paths import display_path
+from .markdown.text import code_block, sanitize, slug
+from .paths import display_name, display_path
 from .step_extras import append_step_extras
 
 _GROUP_ORDER = ("Setup", "Main", "Cleanup")
@@ -32,21 +32,21 @@ class Formatter:
     def __init__(
         self,
         profile: str = "engineer",
-        extended_syntax: bool = False,
+        include_flowcharts: bool = True,
         include_station_options: bool = False,
         include_types: bool = False,
         include_file_custom_data_types: bool = False,
         types_attached_only: bool = True,
         author: str = "Jan Kowalski",
         company: str = "Yesterday Future Company",
-        email: str = "jan.kowalski@example.com",
+        email: str = "jan.kowalski@yesterdayfuturecompany.pl",
         version: str = "1.0.0",
-        detailed_popup_messages: bool = False,
-        include_path: bool = False,
+        detailed_popup_messages: bool = True,
+        show_paths: bool = False,
         company_logo: str | None = None,
     ):
         self.profile = profile.lower()
-        self.extended_syntax = extended_syntax
+        self.include_flowcharts = include_flowcharts
         self.include_station_options = include_station_options
         self.include_types = include_types
         self.include_file_custom_data_types = include_file_custom_data_types
@@ -56,16 +56,37 @@ class Formatter:
         self.email = email
         self.version = version
         self.detailed_popup_messages = detailed_popup_messages
-        self.include_path = include_path
+        self.show_paths = show_paths
         self.company_logo = company_logo
 
     # ------------------------------------------------------------------ utils
 
     def _step_description(self, step: dict[str, Any]) -> str:
         """Step description minus sequencer auto-echo of step type."""
-        description = sanitize(step.get("description", ""))
-        if description == sanitize(step.get("type", "")):
+        description = step.get("description", "")
+        if not description:
             return ""
+
+        # Sequencer often defaults description to step type
+        if description.strip().lower() == (step.get("type") or "").strip().lower():
+            return ""
+
+        exprs = step.get("expressions", {})
+        post_expr = exprs.get("post_expr", "")
+        pre_expr = exprs.get("pre_expr", "")
+
+        # TestStand often auto-echos expressions into the description
+        if description and (description == post_expr or description == pre_expr):
+            return ""
+
+        if post_expr and description == f"#NoValidation({post_expr})":
+            return ""
+
+        if description.startswith("#NoValidation(") and description.endswith(")"):
+            inner = description[14:-1]
+            if inner == post_expr:
+                return ""
+
         return description
 
     @staticmethod
@@ -81,11 +102,17 @@ class Formatter:
     # --------------------------------------------------------------- diagrams
 
     def _diagram_block(self, steps: list[dict[str, Any]]) -> list[str]:
+        if not getattr(self, "include_flowcharts", False):
+            return []
         # A one-node diagram repeats the step list without adding flow
         # information, so groups need at least two steps to earn a chart.
         if len(steps) < 2:
             return []
-        chart = build_flowchart(steps, getattr(self, "detailed_popup_messages", False))
+        chart = build_flowchart(
+            steps,
+            detailed_popup_messages=getattr(self, "detailed_popup_messages", False),
+            include_flowcharts=True,
+        )
         if not chart:
             return []
         return ["```mermaid", chart, "```", ""]
@@ -95,7 +122,7 @@ class Formatter:
     def format(
         self,
         hierarchy_data: list[dict[str, Any]],
-        modules_used: dict[str, list[dict[str, str]]],
+        modules_used: dict[str, list[dict[str, str | int]]],
         engine: Any = None,
     ) -> str:
         md: list[str] = []
@@ -109,7 +136,7 @@ class Formatter:
         md.append("")
 
         # Path subtitle
-        if self.include_path and hierarchy_data:
+        if self.show_paths and hierarchy_data:
             md.append("`" + display_path(hierarchy_data[0]["path"]) + "`")
             md.append("")
 
@@ -122,7 +149,7 @@ class Formatter:
         # Metadata (extracted to HTML header by PDF renderer)
         md.append(f"**Author**: {self.author}")
         if self.email:
-            md.append(f"**Email**: {self.email}")
+            md.append(f"**Email**: <{self.email}>")
         md.append(f"**Company**: {self.company}")
 
         version = self.version
@@ -152,6 +179,7 @@ class Formatter:
                 append_types(md, engine, self.types_attached_only)
 
         output = "\n".join(md).strip() + "\n"
+        output = re.sub(r"[ \t]+\n", "\n", output)
         return re.sub(r"\n{3,}", "\n\n", output)
 
     def _append_file(self, md: list[str], file_data: dict[str, Any]) -> None:
@@ -198,18 +226,14 @@ class Formatter:
 
     def _append_sequence(self, md: list[str], sequence: dict[str, Any]) -> None:
         name = sequence["name"].strip()
-        md.append("#### " + name)
+        md.append("## " + name)
         md.append("")
         category = sequence.get("category", "Subsequence")
         md.append("*" + category + "*")
         md.append("")
         if self.profile == "engineer" and sequence.get("comment"):
             comment = sanitize(sequence["comment"])
-            if self.extended_syntax:
-                md.append('!!! info "Description"')
-                md.append("    " + comment.replace("\n", "\n    "))
-            else:
-                md.append("> " + comment)
+            md.append("> " + comment)
             md.append("")
 
         if sequence.get("estimated_software_delay"):
@@ -221,13 +245,14 @@ class Formatter:
 
         for group_name, steps in self._ordered_groups(sequence["step_groups"]):
             if self.profile == "engineer":
-                md.append("##### " + group_name)
+                md.append("### " + group_name)
                 md.append("")
             md.extend(self._diagram_block(steps))
             if self.profile == "business":
-                self._append_step_list(md, steps)
+                if not self.include_flowcharts:
+                    self._append_step_list(md, steps)
             else:
-                self._append_step_table(md, steps)
+                self._append_step_table(md, steps, sequence)
 
     def _criteria_text(self, limits: dict[str, Any]) -> str:
         """Human-readable test criteria, e.g. ``10 to 20`` or ``= PASS``."""
@@ -241,13 +266,13 @@ class Formatter:
                 val = target or low or high
                 return f"{comp} {val}"
             elif comp == ">= x <":
-                return f">= {low} and < {high}"
+                return f"{low} to < {high}"
             elif comp == ">= x <=":
-                return f">= {low} and <= {high}"
+                return f"{low} to {high}"
             elif comp == "> x <":
-                return f"> {low} and < {high}"
+                return f"> {low} to < {high}"
             elif comp == "> x <=":
-                return f"> {low} and <= {high}"
+                return f"> {low} to {high}"
             else:
                 return comp
 
@@ -258,7 +283,7 @@ class Formatter:
                 return target
             return f"== {target}"
         elif low and high:
-            return f">= {low} and <= {high}"
+            return f"{low} to {high}"
         elif low:
             return f">= {low}"
         elif high:
@@ -270,6 +295,62 @@ class Formatter:
 
         Indentation follows flow-control nesting for readability without Mermaid.
         """
+        icon_map = {
+            "SeqAdp": ":material-link:",
+            "SequenceCall": ":material-link:",
+            "MessagePopup": ":material-message-processing:",
+            "PassFail": ":material-check-all:",
+            "PassFailTest": ":material-check-all:",
+            "NumericLimit": ":material-numeric:",
+            "NumericLimitTest": ":material-numeric:",
+            "StringValue": ":material-format-text:",
+            "StringValueTest": ":material-format-text:",
+            "Action": ":material-lightning-bolt:",
+            "Label": ":material-label:",
+            "Statement": ":material-code-tags:",
+            "CallExecutable": ":material-application-cog:",
+            "Wait": ":material-timer:",
+            "NI_Wait": ":material-timer:",
+            "PropertyLoader": ":material-database-import:",
+            "NI_PropertyLoader": ":material-database-import:",
+            "Database": ":material-database:",
+            "NI_Database": ":material-database:",
+            "NI_OpenDatabase": ":material-database-plus:",
+            "NI_CloseDatabase": ":material-database-minus:",
+            "NI_OpenSQLStatement": ":material-database-search:",
+            "NI_CloseSQLStatement": ":material-database-remove:",
+            "NI_DataOperation": ":material-database-cog:",
+            "NI_NewCsvFileOutputRecordStream": ":material-file-delimited:",
+            "NI_CreateIOSessionAndApplyIOConfig": ":material-swap-horizontal:",
+            "NI_CloseIOSession": ":material-power-plug-off:",
+            "NI_Notification": ":material-bell:",
+            "NI_Rendezvous": ":material-handshake:",
+            "NI_Semaphore": ":material-flag:",
+            "NI_Lock": ":material-lock:",
+            "NI_Queue": ":material-playlist-play:",
+            "NI_AutoSchedule": ":material-calendar-clock:",
+            "NI_UseAutoScheduledResource": ":material-calendar-clock:",
+            "NI_ThreadPriority": ":material-tune:",
+            "NI_BatchSpec": ":material-file-cog:",
+            "NI_BatchSpecification": ":material-file-cog:",
+            "NI_CpuAffinity": ":material-cpu-32-bit:",
+            "DotNet": ":material-microsoft-windows:",
+            "MultipleNumericLimit": ":material-numeric-9-plus-box:",
+            "NI_MultipleNumericLimitTest": ":material-numeric-9-plus-box:",
+            "NI_Flow_If": ":material-call-split:",
+            "NI_Flow_ElseIf": ":material-call-split:",
+            "NI_Flow_Else": ":material-call-split:",
+            "NI_Flow_Select": ":material-format-list-checks:",
+            "NI_Flow_Case": ":material-format-list-checks:",
+            "NI_Flow_For": ":material-sync:",
+            "NI_Flow_ForEach": ":material-sync:",
+            "NI_Flow_While": ":material-sync:",
+            "NI_Flow_DoWhile": ":material-sync:",
+            "NI_Flow_Break": ":material-location-exit:",
+            "NI_Flow_Continue": ":material-location-enter:",
+            "NI_Flow_End": ":material-stop:",
+        }
+
         depth = 0
         for step in steps:
             kind = step["type"]
@@ -279,22 +360,38 @@ class Formatter:
             indent = "  " * depth
             name = sanitize(step["name"]) or "(unnamed)"
 
-            step_id = step.get("id") or ""
+            settings = step.get("step_settings", {})
+            icon_file = settings.get("Icon", "")
+            icon_name = icon_file.replace(".ico", "").replace(".png", "") if icon_file else ""
+            emoji = icon_map.get(icon_name, "") or icon_map.get(kind, "")
+
+            run_mode = settings.get("RunMode")
+            if run_mode == "Skip":
+                name = f"~~{name}~~ (Skipped)"
+
+            exprs = step.get("expressions", {})
+            indicators = ""
+            if exprs.get("loop_type"):
+                indicators += "\uf01e"
+            if exprs.get("record_result", "").lower() == "false":
+                indicators += "\uf0a2"
+
+            prefix = ""
+            if emoji or indicators:
+                prefix = f"{indicators}{emoji} "
+
             anchor = ""
-            if step_id:
-                safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", step_id)
-                anchor = f'<a id="{safe_id}"></a>'
 
             if is_flow_control(kind):
                 desc = sanitize(step.get("description", "")).strip()
                 label = desc if desc else name
-                text = anchor + "*" + kind.replace("NI_Flow_", "") + "*: " + label
+                text = anchor + prefix + "*" + kind.replace("NI_Flow_", "") + "*: " + label
             else:
-                text = anchor + "**" + name + "**"
+                text = anchor + prefix + "**" + name + "**"
                 if kind == "SequenceCall":
                     target = step.get("target_sequence", "")
                     if target:
-                        text += f" → [{target}](#{slug(target)})"
+                        text += f" \uf061 [{target}](#{slug(target)})"
                 limits = step.get("limits") or {}
                 criteria = self._criteria_text(limits)
                 if criteria:
@@ -303,7 +400,18 @@ class Formatter:
                     text += " (" + criteria + unit_str + ")"
                 description = self._step_description(step)
                 if description:
-                    text += ": " + description
+                    text += ": " + sanitize(description)
+
+                # Append requirements if present
+                reqs = step.get("requirements")
+                if reqs:
+                    text += f" | Reqs: {', '.join(sanitize(r) for r in reqs)}"
+
+                # Append report text if present
+                exprs = step.get("expressions", {})
+                if exprs.get("report_text"):
+                    text += f" | Report: {sanitize(exprs['report_text'])}"
+
             md.append(indent + "- " + text)
             if kind in FLOW_OPENERS:
                 depth += 1
@@ -316,14 +424,7 @@ class Formatter:
         # Skip expressions that are just NameOf(Step)
         if re.match(r"^NameOf\s*\(", expr, re.IGNORECASE):
             return ""
-        return code_span(expr)
-
-    def _step_name_cell(self, step: dict[str, Any]) -> str:
-        """Bold step name; strikethrough when skipped."""
-        name = sanitize(step["name"])
-        if step.get("skipped"):
-            return "~~" + name + "~~ *(skipped)*"
-        return "**" + name + "**"
+        return expr
 
     _ADAPTER_CLASSES: ClassVar[dict[str, str]] = {
         "labview": "adapter-labview",
@@ -349,29 +450,113 @@ class Formatter:
                 return css_class
         return ""
 
-    def _append_step_table(self, md: list[str], steps: list[dict[str, Any]]) -> None:
+    def _append_step_table(
+        self, md: list[str], steps: list[dict[str, Any]], sequence: dict[str, Any] | None = None
+    ) -> None:
         """Render steps as a rich dynamic list instead of a fixed table."""
         executable = [step for step in steps if not is_flow_control(step["type"])]
         if not executable:
             return
+
+        # Resolve target step names from the entire sequence if available
+        all_steps = []
+        if sequence and "step_groups" in sequence:
+            for g_steps in sequence["step_groups"].values():
+                all_steps.extend(g_steps)
+        else:
+            all_steps = steps
+
+        icon_map = {
+            "SeqAdp": ":material-link:",
+            "SequenceCall": ":material-link:",
+            "MessagePopup": ":material-message-processing:",
+            "PassFail": ":material-check-all:",
+            "PassFailTest": ":material-check-all:",
+            "NumericLimit": ":material-numeric:",
+            "NumericLimitTest": ":material-numeric:",
+            "StringValue": ":material-format-text:",
+            "StringValueTest": ":material-format-text:",
+            "Action": ":material-lightning-bolt:",
+            "Label": ":material-label:",
+            "Statement": ":material-code-tags:",
+            "CallExecutable": ":material-application-cog:",
+            "Wait": ":material-timer:",
+            "NI_Wait": ":material-timer:",
+            "PropertyLoader": ":material-database-import:",
+            "NI_PropertyLoader": ":material-database-import:",
+            "Database": ":material-database:",
+            "NI_Database": ":material-database:",
+            "NI_OpenDatabase": ":material-database-plus:",
+            "NI_CloseDatabase": ":material-database-minus:",
+            "NI_OpenSQLStatement": ":material-database-search:",
+            "NI_CloseSQLStatement": ":material-database-remove:",
+            "NI_DataOperation": ":material-database-cog:",
+            "NI_NewCsvFileOutputRecordStream": ":material-file-delimited:",
+            "NI_CreateIOSessionAndApplyIOConfig": ":material-swap-horizontal:",
+            "NI_CloseIOSession": ":material-power-plug-off:",
+            "NI_Notification": ":material-bell:",
+            "NI_Rendezvous": ":material-handshake:",
+            "NI_Semaphore": ":material-flag:",
+            "NI_Lock": ":material-lock:",
+            "NI_Queue": ":material-playlist-play:",
+            "NI_AutoSchedule": ":material-calendar-clock:",
+            "NI_UseAutoScheduledResource": ":material-calendar-clock:",
+            "NI_ThreadPriority": ":material-tune:",
+            "NI_BatchSpec": ":material-file-cog:",
+            "NI_BatchSpecification": ":material-file-cog:",
+            "NI_CpuAffinity": ":material-cpu-32-bit:",
+            "DotNet": ":material-microsoft-windows:",
+            "MultipleNumericLimit": ":material-numeric-9-plus-box:",
+            "NI_MultipleNumericLimitTest": ":material-numeric-9-plus-box:",
+        }
+
         for index, step in enumerate(executable):
             name = sanitize(step["name"]) or "(unnamed)"
             step_type = sanitize(step.get("type", ""))
 
-            step_id = step.get("id") or ""
             anchor = ""
-            if step_id:
-                safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", step_id)
-                anchor = f'<a id="{safe_id}"></a>'
 
+            settings = step.get("step_settings", {})
+            icon_file = settings.get("Icon", "")
+            icon_name = icon_file.replace(".ico", "").replace(".png", "") if icon_file else ""
+            emoji = icon_map.get(icon_name, "") or icon_map.get(step_type, "")
+
+            run_mode = settings.get("RunMode")
+
+            exprs = step.get("expressions", {})
+            indicators = ""
+            if exprs.get("loop_type"):
+                indicators += "\uf01e"
+            if exprs.get("record_result", "").lower() == "false":
+                indicators += "\uf0a2"
+
+            prefix = ""
+            if emoji or indicators:
+                prefix = f"{indicators}{emoji} "
+
+            adapter = sanitize(step.get("adapter", ""))
+            adapter_html = ""
+            if step_type == "Label":
+                adapter_html = ' <span class="adapter adapter-label">Label</span>'
+            elif adapter and adapter.lower() != "built-in":
+                adapter_class = self._adapter_css_class(adapter)
+                if adapter_class:
+                    adapter_html = f' <span class="adapter {adapter_class}">{adapter}</span>'
+                else:
+                    adapter_html = f" `{adapter}`"
+
+            type_html = f' <span class="step-type">{step_type}</span>' if step_type else ""
             # Step header line (no dash)
-            if step.get("skipped"):
-                md.append(f"{index}. {anchor}**~~{name}~~** *(skipped)*")
+            if step.get("skipped") or run_mode == "Skip":
+                skip_tag = " *(skipped)*"
+                md.append(
+                    f"{index + 1}. {anchor}{prefix}**~~{name}~~**"
+                    f"{adapter_html}{type_html}{skip_tag}"
+                )
             else:
-                md.append(f"{index}. {anchor}**{name}**")
+                md.append(f"{index + 1}. {anchor}{prefix}**{name}**{adapter_html}{type_html}")
 
             # Compute attributes
-            adapter = sanitize(step.get("adapter", ""))
             expr_cell = self._step_expression_cell(step)
             limits = step.get("limits") or {}
             criteria = self._criteria_text(limits)
@@ -382,21 +567,12 @@ class Formatter:
             module_info = step.get("module_info") or {}
             extra = module_info.get("extra") or {}
 
-            # Type under step name
-            if step_type:
-                md.append(f"    - **Type**: `{step_type}`")
-
             # Attributes as indented sub-bullets (4-space indent for nesting)
-            if adapter:
-                adapter_class = self._adapter_css_class(adapter)
-                if adapter_class:
-                    md.append(
-                        f'    - **Adapter**: <span class="adapter {adapter_class}">{adapter}</span>'
-                    )
-                else:
-                    md.append(f"    - **Adapter**: `{adapter}`")
-            if expr_cell:
-                md.append(f"    - **Expression**: {expr_cell}")
+            if expr_cell and step_type != "MessagePopup":
+                md.append("    - **Expression**:")
+                md.append("")
+                md.append(code_block(expr_cell, indent=6))
+                md.append("")
 
             # Module details depending on adapter type
             adapter_lower = adapter.lower()
@@ -407,23 +583,25 @@ class Formatter:
                 class_path = extra.get("class_path") or ""
                 if class_path:
                     md.append(f"    - **Class**: `{class_path}`")
-                if project_path:
-                    md.append(f"    - **Project**: `{project_path}`")
                 if vi_path:
-                    md.append(f"    - **VI**: `{vi_path}`")
-                elif module_path and module_path != "N/A":
-                    md.append(f"    - **VI**: `{module_path}`")
+                    md.append(f"    - **VI**: `{display_name(vi_path)}`")
+                elif project_path:
+                    md.append(f"    - **Project**: `{display_name(project_path)}`")
+                elif module_path:
+                    md.append(f"    - **Module**: `{display_name(module_path)}`")
             elif any(x in adapter_lower for x in ("dotnet", ".net")):
                 # .NET adapter
                 assembly_name = extra.get("assembly_name") or module_path or ""
                 class_name = extra.get("class_name") or ""
                 member_name = extra.get("member_name") or ""
-                if assembly_name and assembly_name != "N/A":
-                    md.append(f"    - **Assembly**: `{assembly_name}`")
-                if class_name:
-                    md.append(f"    - **Class**: `{class_name}`")
-                if member_name:
+
+                if class_name and member_name:
+                    md.append(f"    - **Call**: `{class_name}.{member_name}(...)`")
+                elif member_name:
                     md.append(f"    - **Method**: `{member_name}`")
+
+                if assembly_name and assembly_name != "N/A":
+                    md.append(f"    - **Assembly**: `{display_name(assembly_name)}`")
             elif "python" in adapter_lower:
                 # Python adapter
                 python_module = extra.get("module_path") or module_path or ""
@@ -445,17 +623,108 @@ class Formatter:
                 unit = sanitize(limits.get("unit", "")).strip()
                 if unit and unit not in ("boolean", "Text"):
                     md.append(f"    - **Unit**: {unit}")
+
             if step_type == "SequenceCall":
                 target = step.get("target_sequence", "")
                 if target:
+                    # If target is dynamic, it won't be a valid anchor, but try our best
                     md.append(f"    - **Calls**: [{target}](#{slug(target)})")
+
+            if step_type == "MessagePopup":
+
+                def _strip_quotes(s: str) -> str:
+                    s = s.strip()
+                    if (s.startswith('"') and s.endswith('"')) or (
+                        s.startswith("'") and s.endswith("'")
+                    ):
+                        return s[1:-1]
+                    return s
+
+                title_expr = exprs.get("title")
+                message_expr = exprs.get("message")
+
+                if title_expr:
+                    md.append("    - **Title Expression**:")
+                    md.append("")
+                    md.append(code_block(_strip_quotes(title_expr), indent=6))
+                    md.append("")
+
+                if message_expr:
+                    md.append("    - **Message Expression**:")
+                    md.append("")
+                    md.append(code_block(_strip_quotes(message_expr), indent=6))
+                    md.append("")
+
+                buttons = []
+                for b_idx in range(1, 7):
+                    lbl = exprs.get(f"button{b_idx}")
+                    if lbl:
+                        clean_lbl = _strip_quotes(lbl).strip()
+                        if clean_lbl:
+                            buttons.append(f"Button {b_idx}: `{clean_lbl}`")
+                if buttons:
+                    md.append("    - **Buttons**:")
+                    for btn in buttons:
+                        md.append(f"      - {btn}")
+
+                default_btn = exprs.get("default_button")
+                timer_btn = exprs.get("timer_button")
+                time_wait = exprs.get("time_to_wait")
+
+                if default_btn and default_btn not in ("0", ""):
+                    md.append(f"    - **Default Button**: Button {default_btn}")
+                if timer_btn and timer_btn not in ("0", ""):
+                    md.append(f"    - **Timer Button**: Button {timer_btn}")
+                if time_wait and time_wait not in ("0", "0.0", ""):
+                    md.append(f"    - **Time to Wait**: {time_wait}s")
+
+            # Branching Navigation
+            for _act_key, tgt_key, lbl in [
+                ("pass_action", "pass_action_target_id", "Branch (Pass)"),
+                ("fail_action", "fail_action_target_id", "Branch (Fail)"),
+                ("custom_true_action", "custom_true_target_id", "Branch (Custom True)"),
+                ("custom_false_action", "custom_false_target_id", "Branch (Custom False)"),
+            ]:
+                tgt_id = exprs.get(tgt_key, "").strip().strip('"')
+                if tgt_id:
+                    tgt_step = next((s for s in all_steps if s.get("id") == tgt_id), None)
+                    if tgt_step:
+                        tgt_name = tgt_step.get("name") or "Step"
+                    else:
+                        tgt_name = tgt_id
+
+                    if tgt_name.startswith("ID#:") or "ID#:" in tgt_name:
+                        tgt_name = "Target Step"
+                    elif tgt_name == "<End>" or tgt_name == "_End_":
+                        tgt_name = "End"
+                    md.append(f"    - **{lbl}**: `{tgt_name}`")
+
             if precond:
-                md.append(f"    - **Precondition**: `{code_span(precond)}`")
+                md.append("")
+                md.append("    - **Precondition**:")
+                md.append("")
+                md.append(code_block(precond, indent=6))
+                md.append("")
             comment = step.get("comment")
             if comment:
-                md.append(f"    - **Comment**: {comment}")
+                if step_type == "Label":
+                    md.append(f'    - **Comment**: <span class="label-comment">{comment}</span>')
+                else:
+                    md.append(f"    - **Comment**: {comment}")
             if desc:
-                md.append(f"    - **Description**: {desc}")
+                if "\n" in desc:
+                    md.append("    - **Description**:")
+                    md.append("")
+                    md.append(code_block(desc, indent=6))
+                    md.append("")
+                else:
+                    if step_type == "Label":
+                        lbl_desc = sanitize(desc)
+                        md.append(
+                            f'    - **Description**: <span class="label-comment">{lbl_desc}</span>'
+                        )
+                    else:
+                        md.append(f"    - **Description**: {sanitize(desc)}")
             if delay:
                 md.append(f"    - **Delay**: {delay}s")
 

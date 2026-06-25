@@ -28,7 +28,7 @@ def append_variables(
     md.append("## Variables")
     md.append("")
     for sequence in sequences_with_vars:
-        md.append("### " + sequence["name"].strip() + " variables")
+        md.append("### " + sequence["name"].strip())
         md.append("")
         for scope, variables in sequence["variables"].items():
             if not variables:
@@ -42,15 +42,15 @@ def append_variables(
             md.append("")
 
 
-def append_modules(md: list[str], modules_used: dict[str, list[dict[str, str]]]) -> None:
+def append_modules(md: list[str], modules_used: dict[str, list[dict[str, str | int]]]) -> None:
     if not modules_used:
         return
     md.append("---")
     md.append("")
     md.append("## Code Modules")
     md.append("")
-    md.append(format_row(["File", "Module", "Adapter"]))
-    md.append(format_sep(3))
+    md.append(format_row(["File", "Module", "Adapter", "Occurrences"]))
+    md.append(format_sep(4))
     for file_path, modules in modules_used.items():
         file_name = Path(file_path).name
         for module in modules:
@@ -58,8 +58,9 @@ def append_modules(md: list[str], modules_used: dict[str, list[dict[str, str]]])
                 format_row(
                     [
                         sanitize(file_name),
-                        sanitize(module["path"]),
-                        sanitize(module["type"]),
+                        sanitize(str(module["path"])),
+                        sanitize(str(module["type"])),
+                        str(module.get("occurrences", 1)),
                     ],
                 ),
             )

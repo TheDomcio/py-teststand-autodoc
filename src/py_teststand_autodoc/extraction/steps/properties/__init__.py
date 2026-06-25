@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .advanced import extract_advanced_properties
 from .execution import extract_execution_properties
 from .looping import extract_looping_properties
 from .routing import extract_routing_properties
@@ -31,5 +32,10 @@ def extract_universal_properties(
     exprs.update(exec_exprs)
     configs.update(exec_configs)
     reqs.extend(exec_reqs)
+
+    # Advanced properties (LoadOpt, UnloadOpt, ReportText)
+    adv_exprs, adv_configs = extract_advanced_properties(step_property_object)
+    exprs.update(adv_exprs)
+    configs.update(adv_configs)
 
     return exprs, configs, reqs

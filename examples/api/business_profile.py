@@ -21,7 +21,7 @@ def main() -> None:
         output=output_path,
         profile="business",
         ignore_skipped=True,
-        extended_syntax=True,
+        include_flowcharts=True,
     )
 
     print(f"Generated Markdown at: {output_path}")

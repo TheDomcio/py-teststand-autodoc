@@ -59,6 +59,13 @@
  *   .admonition { font-size: 9pt; }
  */
 
+@font-face {
+  font-family: "UbuntuNerdFont";
+  src: url("@@FONT_PATH@@") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 /* ------------------------------------------------------------------ *
  * Design tokens
  * ------------------------------------------------------------------ */
@@ -81,11 +88,11 @@
   --color-surface-alt: #f6f9fc;
   --color-surface-sunken: #eef3f8;
 
-  --color-code: #b3306b;
-  --color-code-bg: #f3f0f5;
+  --color-code: #243b53;
+  --color-code-bg: #f2f5f8;
 
   /* Typography */
-  --font-sans: "Segoe UI", "Inter", "Helvetica Neue", "Arial", sans-serif;
+  --font-sans: "UbuntuNerdFont", "Segoe UI", "Inter", "Helvetica Neue", "Arial", sans-serif;
   --font-mono: "Cascadia Code", "Cascadia Mono", "Fira Code", "Consolas",
     "SFMono-Regular", monospace;
 
@@ -108,9 +115,9 @@
 
 body {
   font-family: var(--font-sans);
-  font-size: 9pt;
-  color: var(--color-body);
-  line-height: 1.55;
+  font-size: 10pt;
+  color: var(--color-ink);
+  line-height: 1.6;
   max-width: 100%;
   margin: 0;
   letter-spacing: 0.05px;
@@ -277,7 +284,7 @@ code {
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 7.8pt;
-  border: 1px solid rgba(179, 48, 107, 0.12);
+  border: 1px solid rgba(36, 59, 83, 0.12);
 }
 
 /* ------------------------------------------------------------------ *
@@ -333,16 +340,53 @@ code {
   border: 1px solid #58d68d;
 }
 
+li:has(.step-type) {
+  position: relative;
+  padding-right: 120px;
+}
+
+.step-type {
+  position: absolute;
+  right: 0;
+  top: 4px;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 7.8pt;
+  font-weight: 500;
+  background-color: var(--color-surface-sunken);
+  border: 1px solid var(--color-rule-strong);
+  padding: 1.5px 5px;
+  border-radius: var(--radius-sm);
+}
+
+.adapter-label {
+  background-color: #fef3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.label-comment {
+  color: #856404;
+  background-color: #fef3cd;
+  border: 1px solid #ffeeba;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  font-size: 8pt;
+  font-weight: 500;
+}
+
 pre {
   background-color: #0f1b29;
   color: #e6edf5;
   padding: 14px 16px;
   border-radius: var(--radius-md);
   overflow-x: auto;
-  font-size: 7.8pt;
-  line-height: 1.55;
+  font-size: 8.5pt;
+  line-height: 1.6;
   border: 1px solid #1c2c3d;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  text-align: center;
 }
 
 pre code {
@@ -380,8 +424,12 @@ ol {
 }
 
 li {
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   padding-left: 2px;
+}
+
+li > strong:first-child {
+  color: var(--color-brand);
 }
 
 li::marker {
@@ -407,8 +455,7 @@ hr {
 tr,
 pre,
 blockquote,
-.admonition,
-.mermaid-diagram {
+.admonition {
   break-inside: avoid;
 }
 
@@ -432,8 +479,8 @@ h4 {
 }
 
 .mermaid-diagram svg {
-  max-width: 92% !important;
-  max-height: 8cm !important;
+  max-width: 100% !important;
+  max-height: 13.5cm !important;
   display: block;
   margin: 0 auto;
 }
@@ -447,6 +494,44 @@ h4 {
 .mermaid-diagram svg .nodeLabel {
   font-family: var(--font-sans) !important;
   font-size: 8.5pt !important;
+}
+
+/* pymdownx.superfences mermaid (zensical-style) */
+pre.mermaid {
+  text-align: center;
+  margin: 18px 0;
+  padding: 16px;
+  background-color: var(--color-surface-alt);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+pre.mermaid code {
+  display: none;
+}
+
+pre.mermaid svg {
+  max-width: 100% !important;
+  max-height: 13.5cm !important;
+  display: block;
+  margin: 0 auto;
+}
+
+pre.mermaid svg foreignObject,
+pre.mermaid svg foreignobject {
+  overflow: visible !important;
+}
+
+pre.mermaid svg text,
+pre.mermaid svg .nodeLabel {
+  font-family: var(--font-sans) !important;
+  font-size: 8.5pt !important;
+}
+
+details {
+  margin-bottom: 8px;
+  margin-top: 4px;
 }
 
 /* ------------------------------------------------------------------ *
@@ -494,10 +579,39 @@ h4 {
 }
 
 .admonition-title {
-  font-weight: 700;
-  margin: 0 0 6px 0;
-  font-size: 9pt;
-  letter-spacing: 0.2px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* Material Icons sizing */
+.twemoji svg, .zensical-emoji svg {
+    height: 1.2em;
+    width: 1.2em;
+    vertical-align: text-bottom;
+    fill: currentColor;
+}
+
+/* Small dark codeblocks for expressions, preconditions, etc. */
+pre.expr-code {
+  background-color: #0f1b29;
+  color: #e6edf5;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  font-size: 7.2pt;
+  line-height: 1.35;
+  border: 1px solid #1c2c3d;
+  margin: 3px 0 6px 0;
+  display: block;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+pre.expr-code code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
+  font-size: inherit;
 }
 
 .admonition.note {
@@ -558,12 +672,14 @@ h4 {
     background-color: inherit !important;
   }
 
-  pre {
+  pre,
+  pre.expr-code {
     background-color: #0f1b29 !important;
     color: #e6edf5 !important;
   }
 
   .mermaid-diagram,
+  pre.mermaid,
   blockquote,
   .admonition,
   .doc-header {

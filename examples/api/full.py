@@ -20,7 +20,7 @@ def main() -> None:
         # --- Profile ---
         profile="engineer",
         # --- Content flags ---
-        extended_syntax=True,
+        include_flowcharts=True,
         ignore_skipped=False,
         include_models=True,
         include_scopes=list(VALID_SCOPES),

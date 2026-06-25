@@ -23,3 +23,12 @@ def code_span(text: str | None) -> str:
     if not text:
         return ""
     return "`" + text.replace("`", "'").replace("|", "\\|") + "`"
+
+
+def code_block(text: str | None, indent: int = 0) -> str:
+    if not text:
+        return ""
+    prefix = " " * indent
+    content = text.strip()
+    indented_body = "\n".join(prefix + line for line in content.splitlines())
+    return f"{prefix}```text\n{indented_body}\n{prefix}```"
