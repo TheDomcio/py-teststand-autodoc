@@ -40,7 +40,6 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "graphifyy>=0.8.46",
     "py-teststand>=0.2.3",
     "pydantic>=2.13.4",
     "pyrefly>=1.1.0",
