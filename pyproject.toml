@@ -1,6 +1,6 @@
 [project]
 name = "py-teststand-autodoc"
-version = "0.2.0"
+version = "0.2.1"
 description = "Automated documentation generator for National Instruments TestStand™ sequence files"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,11 +39,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Typing :: Typed",
 ]
-dependencies = [
-    "py-teststand>=0.2.3",
-    "pydantic>=2.13.4",
-    "pyrefly>=1.1.0",
-]
+dependencies = ["py-teststand>=0.2.3", "pydantic>=2.13.4", "pyrefly>=1.1.0"]
 
 [project.optional-dependencies]
 # Markdown -> HTML -> PDF rendering through headless Microsoft Edge.
