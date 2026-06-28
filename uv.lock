@@ -621,7 +621,7 @@ dependencies = [
 pdf = [
     { name = "markdown" },
     { name = "playwright" },
-    { name = "zensical" },
+    { name = "pymdown-extensions" },
 ]
 
 [package.dev-dependencies]
@@ -636,6 +636,7 @@ dev = [
 tests = [
     { name = "mkdocs" },
     { name = "mkdocs-material" },
+    { name = "zensical" },
 ]
 
 [package.metadata]
@@ -644,8 +645,8 @@ requires-dist = [
     { name = "playwright", marker = "extra == 'pdf'", specifier = ">=1.40" },
     { name = "py-teststand", specifier = ">=0.2.3" },
     { name = "pydantic", specifier = ">=2.13.4" },
+    { name = "pymdown-extensions", marker = "extra == 'pdf'", specifier = ">=10.3" },
     { name = "pyrefly", specifier = ">=1.1.0" },
-    { name = "zensical", marker = "extra == 'pdf'", specifier = ">=0.0.45" },
 ]
 provides-extras = ["pdf"]
 
@@ -661,6 +662,7 @@ dev = [
 tests = [
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-material", specifier = ">=9.7.6" },
+    { name = "zensical", specifier = ">=0.0.45" },
 ]
 
 [[package]]

@@ -131,11 +131,11 @@ def markdown_to_html(markdown_text: str, custom_css: str | None = None) -> str:
     # Build Markdown extensions configuration
     extension_configs = dict(_MARKDOWN_EXTENSION_CONFIGS)
     try:
-        import zensical.extensions.emoji
+        import pymdownx.emoji
 
         extension_configs["pymdownx.emoji"] = {
-            "emoji_index": zensical.extensions.emoji.twemoji,
-            "emoji_generator": zensical.extensions.emoji.to_svg,
+            "emoji_index": pymdownx.emoji.twemoji,
+            "emoji_generator": pymdownx.emoji.to_svg,
         }
     except ImportError:
         pass

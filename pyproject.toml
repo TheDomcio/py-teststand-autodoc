@@ -1,6 +1,6 @@
 [project]
 name = "py-teststand-autodoc"
-version = "0.2.1"
+version = "0.2.2"
 description = "Automated documentation generator for National Instruments TestStand™ sequence files"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -45,7 +45,7 @@ dependencies = ["py-teststand>=0.2.3", "pydantic>=2.13.4", "pyrefly>=1.1.0"]
 # Markdown -> HTML -> PDF rendering through headless Microsoft Edge.
 # channel="msedge" drives the Edge that ships with Windows, so no browser
 # download is needed.
-pdf = ["markdown>=3.5", "playwright>=1.40", "zensical>=0.0.45"]
+pdf = ["markdown>=3.5", "playwright>=1.40", "pymdown-extensions>=10.3"]
 
 [project.urls]
 Homepage = "https://github.com/TheDomcio/py-teststand-autodoc"
@@ -143,7 +143,7 @@ dev = [
     "ty>=0.0.34",
     "types-pywin32",
 ]
-tests = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.6"]
+tests = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.6", "zensical>=0.0.45"]
 
 [tool.ty]
 rules = { "possibly-missing-attribute" = "ignore" }
