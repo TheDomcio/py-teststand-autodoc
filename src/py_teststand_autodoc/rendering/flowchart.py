@@ -495,7 +495,7 @@ def build_flowchart(
             default_btn = exprs.get("default_button", "")
             timer_btn = exprs.get("timer_button", "")
 
-            label = f"**{name}**"
+            label = f"<b>{name}</b>"
             if msg:
                 label += f"<br/><i>{msg}</i>"
 
@@ -509,13 +509,13 @@ def build_flowchart(
                 label += "<br/>" + " ".join(buttons)
 
             if default_btn and len(buttons) > 1:
-                label += f"<br/>*(Default: {default_btn})*"
+                label += f"<br/><i>(Default: {default_btn})</i>"
 
             if timeout and timeout not in ("0", "0.0"):
                 wait_text = f"Timeout: {timeout}s"
                 if timer_btn:
                     wait_text += f" → triggers [{timer_btn}]"
-                label += f"<br/>**{wait_text}**"
+                label += f"<br/><b>{wait_text}</b>"
 
             nid = add_node("popup", diagram_label(label, "Popup", max_length=256), step)
             attach(nid)

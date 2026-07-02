@@ -44,7 +44,7 @@ def test_static_site_generators_compatibility(engine, seq_file):
 
     # Run MkDocs
     mkdocs_res = subprocess.run(
-        ["uv", "run", "mkdocs", "build", "--strict"],
+        ["uv", "run", "--group", "tests", "mkdocs", "build", "--strict"],
         cwd=str(root_dir),
         capture_output=True,
         text=True,
@@ -53,7 +53,7 @@ def test_static_site_generators_compatibility(engine, seq_file):
 
     # Run Zensical
     zensical_res = subprocess.run(
-        ["uv", "run", "zensical", "build"],
+        ["uv", "run", "--group", "tests", "zensical", "build"],
         cwd=str(root_dir),
         capture_output=True,
         text=True,

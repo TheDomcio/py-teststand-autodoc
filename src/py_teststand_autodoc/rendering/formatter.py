@@ -380,7 +380,11 @@ class Formatter:
             if emoji or indicators:
                 prefix = f"{indicators}{emoji} "
 
+            step_id = step.get("id")
             anchor = ""
+            if step_id:
+                safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", step_id)
+                anchor = f'<a id="{safe_id}"></a>'
 
             if is_flow_control(kind):
                 desc = sanitize(step.get("description", "")).strip()
@@ -514,7 +518,11 @@ class Formatter:
             name = sanitize(step["name"]) or "(unnamed)"
             step_type = sanitize(step.get("type", ""))
 
+            step_id = step.get("id")
             anchor = ""
+            if step_id:
+                safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", step_id)
+                anchor = f'<a id="{safe_id}"></a>'
 
             settings = step.get("step_settings", {})
             icon_file = settings.get("Icon", "")
@@ -655,28 +663,31 @@ class Formatter:
                     md.append(code_block(_strip_quotes(message_expr), indent=6))
                     md.append("")
 
-                buttons = []
+                button_map = {}
                 for b_idx in range(1, 7):
                     lbl = exprs.get(f"button{b_idx}")
                     if lbl:
                         clean_lbl = _strip_quotes(lbl).strip()
                         if clean_lbl:
-                            buttons.append(f"Button {b_idx}: `{clean_lbl}`")
-                if buttons:
+                            button_map[str(b_idx)] = clean_lbl
+
+                if button_map:
                     md.append("    - **Buttons**:")
-                    for btn in buttons:
-                        md.append(f"      - {btn}")
+                    for b_idx, btn_text in button_map.items():
+                        md.append(f"        - `{btn_text}`")
 
                 default_btn = exprs.get("default_button")
                 timer_btn = exprs.get("timer_button")
                 time_wait = exprs.get("time_to_wait")
 
                 if default_btn and default_btn not in ("0", ""):
-                    md.append(f"    - **Default Button**: Button {default_btn}")
+                    btn_text = button_map.get(default_btn, f"Button {default_btn}")
+                    md.append(f"    - **Default**: `{btn_text}`")
                 if timer_btn and timer_btn not in ("0", ""):
-                    md.append(f"    - **Timer Button**: Button {timer_btn}")
+                    btn_text = button_map.get(timer_btn, f"Button {timer_btn}")
+                    md.append(f"    - **Timeout Action**: `{btn_text}`")
                 if time_wait and time_wait not in ("0", "0.0", ""):
-                    md.append(f"    - **Time to Wait**: {time_wait}s")
+                    md.append(f"    - **Timeout**: {time_wait}s")
 
             # Branching Navigation
             for _act_key, tgt_key, lbl in [
@@ -697,7 +708,12 @@ class Formatter:
                         tgt_name = "Target Step"
                     elif tgt_name == "<End>" or tgt_name == "_End_":
                         tgt_name = "End"
-                    md.append(f"    - **{lbl}**: `{tgt_name}`")
+
+                    if tgt_step and tgt_step.get("id"):
+                        safe_tgt_id = re.sub(r"[^a-zA-Z0-9_-]", "_", tgt_step["id"])
+                        md.append(f"    - **{lbl}**: [{tgt_name}](#{safe_tgt_id})")
+                    else:
+                        md.append(f"    - **{lbl}**: `{tgt_name}`")
 
             if precond:
                 md.append("")
@@ -729,6 +745,7 @@ class Formatter:
                 md.append(f"    - **Delay**: {delay}s")
 
             append_step_extras(md, step, indent="    ")
+            md.append("")
 
         md.append("")
 

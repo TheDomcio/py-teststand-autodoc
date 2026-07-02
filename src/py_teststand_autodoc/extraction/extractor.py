@@ -92,7 +92,7 @@ class HierarchyExtractor:
             sequence_file = self.engine.get_sequence_file_ex(
                 abs_path,
                 options,
-                ConflictHandler.Error,
+                ConflictHandler.UseGlobalType,
             )
             file_data: dict[str, Any] = {
                 "name": Path(sequence_file.path).name,

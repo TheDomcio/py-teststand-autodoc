@@ -340,15 +340,7 @@ code {
   border: 1px solid #58d68d;
 }
 
-li:has(.step-type) {
-  position: relative;
-  padding-right: 120px;
-}
-
 .step-type {
-  position: absolute;
-  right: 0;
-  top: 4px;
   color: var(--color-muted);
   font-family: var(--font-mono);
   font-size: 7.8pt;
@@ -505,6 +497,8 @@ pre.mermaid {
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-lg);
   box-shadow: none;
+  display: flex;
+  justify-content: center;
 }
 
 pre.mermaid code {

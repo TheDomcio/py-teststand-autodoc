@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 _MARKDOWN_EXTENSIONS = [
@@ -30,6 +31,16 @@ _INSTALL_HINT = "Install the 'pdf' extra: uv pip install \"py-teststand-autodoc[
 def _load_page_css() -> str:
     """Lazily load the base PDF CSS to avoid module-level side effects."""
     css_path = Path(__file__).parent / "pdf.css"
+    if not css_path.exists() and getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent
+        for path in (
+            exe_dir / "lib" / "py_teststand_autodoc" / "rendering" / "pdf.css",
+            exe_dir / "assets" / "pdf.css",
+            exe_dir / "pdf.css",
+        ):
+            if path.exists():
+                css_path = path
+                break
     if not css_path.exists():
         raise RuntimeError(f"Required CSS file missing: {css_path}")
     return css_path.read_text(encoding="utf-8")
@@ -117,6 +128,15 @@ def markdown_to_html(markdown_text: str, custom_css: str | None = None) -> str:
 
     css = _load_page_css()
     font_path = Path(__file__).parent.parent / "assets" / "UbuntuNerdFont-Regular.ttf"
+    if not font_path.exists() and getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent
+        for path in (
+            exe_dir / "assets" / "UbuntuNerdFont-Regular.ttf",
+            exe_dir / "lib" / "py_teststand_autodoc" / "assets" / "UbuntuNerdFont-Regular.ttf",
+        ):
+            if path.exists():
+                font_path = path
+                break
     if font_path.exists():
         import base64
 
@@ -133,10 +153,18 @@ def markdown_to_html(markdown_text: str, custom_css: str | None = None) -> str:
     try:
         import pymdownx.emoji
 
-        extension_configs["pymdownx.emoji"] = {
-            "emoji_index": pymdownx.emoji.twemoji,
-            "emoji_generator": pymdownx.emoji.to_svg,
-        }
+        try:
+            import material.extensions.emoji as material_emoji  # type: ignore
+
+            extension_configs["pymdownx.emoji"] = {
+                "emoji_index": material_emoji.twemoji,
+                "emoji_generator": material_emoji.to_svg,
+            }
+        except ImportError:
+            extension_configs["pymdownx.emoji"] = {
+                "emoji_index": pymdownx.emoji.twemoji,
+                "emoji_generator": pymdownx.emoji.to_svg,
+            }
     except ImportError:
         pass
 
@@ -220,6 +248,15 @@ class PlaywrightPdfPrinter:
 
             # Load mermaid from bundled assets
             local_mermaid_path = Path(__file__).parent.parent / "assets" / "mermaid.min.js"
+            if not local_mermaid_path.exists() and getattr(sys, "frozen", False):
+                exe_dir = Path(sys.executable).parent
+                for path in (
+                    exe_dir / "assets" / "mermaid.min.js",
+                    exe_dir / "lib" / "py_teststand_autodoc" / "assets" / "mermaid.min.js",
+                ):
+                    if path.exists():
+                        local_mermaid_path = path
+                        break
             if local_mermaid_path.exists():
                 page.add_script_tag(path=local_mermaid_path)
             else:

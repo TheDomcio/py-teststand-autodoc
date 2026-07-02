@@ -51,13 +51,14 @@ def _collect_violations() -> dict[str, list[tuple[int, str, str]]]:
     return result
 
 
+@pytest.fixture(scope="class")
+def violations() -> dict[str, list[tuple[int, str, str]]]:
+    return _collect_violations()
+
+
 @pytest.mark.unit
 class TestNoRawPywin32:
     """Scan every .py file under src/ for forbidden pywin32 patterns."""
-
-    @pytest.fixture(scope="class")
-    def violations(self) -> dict[str, list[tuple[int, str, str]]]:
-        return _collect_violations()
 
     def test_no_pywin32_imports(self, violations: dict[str, list[tuple[int, str, str]]]):
         import_hits = {}
